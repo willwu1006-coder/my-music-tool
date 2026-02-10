@@ -1,28 +1,13 @@
 const express = require('express');
-const axios = require('axios');
 const path = require('path');
-// --- 修改这里：使用正确的引入方式 ---
-const { serveNeteaseCloudMusicApi } = require('NeteaseCloudMusicApi/server');
+// 直接引入网易云 API 的核心功能模块
+const netease = require('NeteaseCloudMusicApi');
 
 const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-// 自动启动网易云API服务
-const API_PORT = 3000;
-async function startApi() {
-    try {
-        await serveNeteaseCloudMusicApi({ port: API_PORT });
-        console.log(`网易云接口已运行在端口: ${API_PORT}`);
-    } catch (err) {
-        console.error('API启动失败:', err);
-    }
-}
-startApi();
-
-const API_URL = `http://localhost:${API_PORT}`;
-
-// 核心逻辑函数
+// 核心逻辑：洗牌算法
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -31,17 +16,7 @@ function shuffle(array) {
     return array;
 }
 
-async function getRealId(input) {
-    input = input.trim();
-    if (/^\d+$/.test(input)) return input;
-    try {
-        const res = await axios.get(input, { maxRedirects: 5 });
-        const finalUrl = res.request.res.responseUrl || '';
-        const match = finalUrl.match(/id=(\d+)/);
-        return match ? match[1] : null;
-    } catch (e) { return null; }
-}
-
+// 核心逻辑：合并歌单
 function mergePlaylists(playlists, targetMin) {
     const targetMs = targetMin * 60 * 1000;
     let result = [];
@@ -60,7 +35,7 @@ function mergePlaylists(playlists, targetMin) {
                 if (!usedSongIds.has(song.id)) {
                     result.push(song);
                     usedSongIds.add(song.id);
-                    currentMs += song.dt;
+                    currentMs += (song.dt || 0);
                 }
                 if (currentMs >= targetMs) break;
             }
@@ -70,28 +45,61 @@ function mergePlaylists(playlists, targetMin) {
     return result;
 }
 
-// 接口
+// 核心逻辑：解析 ID
+async function getRealId(input) {
+    input = input.trim();
+    if (/^\d+$/.test(input)) return input;
+    const match = input.match(/id=(\d+)/);
+    return match ? match[1] : null;
+}
+
+// 路由接口
 app.post('/api/generate', async (req, res) => {
     try {
         const { playlistIds, duration, cookie } = req.body;
         let allPlaylistsData = [];
+
         for (let input of playlistIds) {
             const realId = await getRealId(input);
             if (realId) {
-                const response = await axios.get(`${API_URL}/playlist/track/all?id=${realId}&cookie=${encodeURIComponent(cookie)}`);
-                if (response.data.songs) allPlaylistsData.push(response.data.songs);
+                // --- 直接调用 API 函数，不再使用 axios 请求 localhost ---
+                const result = await netease.playlist_track_all({
+                    id: realId,
+                    cookie: cookie
+                });
+                if (result.body.songs) {
+                    allPlaylistsData.push(result.body.songs);
+                }
             }
         }
+
         const finalSongs = mergePlaylists(allPlaylistsData, duration);
         const trackIds = finalSongs.map(s => s.id).join(',');
-        const createRes = await axios.get(`${API_URL}/playlist/create?name=随机排歌_${new Date().toLocaleDateString()}&cookie=${encodeURIComponent(cookie)}`);
-        const newId = createRes.data.id;
-        await axios.get(`${API_URL}/playlist/tracks?op=add&pid=${newId}&tracks=${trackIds}&cookie=${encodeURIComponent(cookie)}`);
+
+        // 1. 创建新歌单
+        const createRes = await netease.playlist_create({
+            name: `随机排歌_${new Date().toLocaleDateString()}`,
+            cookie: cookie
+        });
+        const newId = createRes.body.id;
+
+        // 2. 添加歌曲到新歌单
+        await netease.playlist_tracks({
+            op: 'add',
+            pid: newId,
+            tracks: trackIds,
+            cookie: cookie
+        });
+
         res.json({ success: true, count: finalSongs.length, playlistId: newId });
     } catch (error) {
-        res.json({ success: false, message: '生成失败，请检查Cookie' });
+        console.error('API Error:', error);
+        res.json({ success: false, message: '生成失败，请检查歌单ID或Cookie' });
     }
 });
 
+// 监听 Zeabur 提供的端口
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log(`服务启动在端口 ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`服务已成功启动！正在监听端口 ${PORT}`);
+});

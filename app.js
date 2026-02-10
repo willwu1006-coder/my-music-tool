@@ -52,7 +52,28 @@ async function getRealId(input) {
     const match = input.match(/id=(\d+)/);
     return match ? match[1] : null;
 }
+// 1. 获取二维码的 Key
+app.get('/api/login/key', async (req, res) => {
+    const result = await netease.login_qr_key({});
+    res.json(result.body);
+});
 
+// 2. 根据 Key 生成二维码图片
+app.get('/api/login/create', async (req, res) => {
+    const result = await netease.login_qr_create({
+        key: req.query.key,
+        qrimg: true // 开启 base64 模式，直接返回图片
+    });
+    res.json(result.body);
+});
+
+// 3. 检查扫码状态
+app.get('/api/login/check', async (req, res) => {
+    const result = await netease.login_qr_check({
+        key: req.query.key
+    });
+    res.json(result.body);
+});
 // 路由接口
 app.post('/api/generate', async (req, res) => {
     try {

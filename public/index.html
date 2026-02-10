@@ -2,31 +2,94 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>网易云自动排歌工具</title>
+    <title>🎵 自动排歌工具</title>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f4f4f7; display: flex; justify-content: center; padding: 40px; }
-        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        input, textarea { width: 100%; margin: 10px 0; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #e03e3e; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        input, textarea { width: 100%; margin: 10px 0; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; text-align: left;}
+        button { width: 100%; padding: 12px; background: #e03e3e; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 10px; }
         button:disabled { background: #ccc; }
-        .hint { font-size: 12px; color: #666; margin-bottom: 20px; }
-        #status { margin-top: 15px; font-size: 14px; color: #333; }
+        .hint { font-size: 12px; color: #666; margin-bottom: 20px; text-align: left; }
+        
+        /* 扫码登录样式 */
+        #qr-container { margin: 20px 0; display: none; }
+        #qr-img { width: 180px; height: 180px; border: 1px solid #eee; }
+        .login-btn { background: #333; margin-bottom: 20px; }
     </style>
 </head>
 <body>
     <div class="card">
         <h2>🎵 自动排歌工具</h2>
-        <p class="hint">输入多个歌单链接，我会随机抽取歌曲并组合成新歌单。</p>
+        <p class="hint">请先扫码登录，再输入歌单信息。</p>
+
+        <!-- 登录区域 -->
+        <div id="login-section">
+            <button class="login-btn" onclick="startLogin()">使用网易云 App 扫码登录</button>
+            <div id="qr-container">
+                <img id="qr-img" src="" alt="二维码">
+                <p id="qr-status" style="font-size: 14px; color: #666;">等待扫码...</p>
+            </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+
+        <!-- 业务区域 -->
         <textarea id="ids" rows="4" placeholder="粘贴歌单链接或ID（一行一个）"></textarea>
         <input type="number" id="duration" placeholder="目标总时长（分钟）">
-        <input type="text" id="cookie" placeholder="粘贴你的网易云 Cookie">
-        <button onclick="generate()">立即生成新歌单</button>
-        <p id="status"></p>
+        <input type="text" id="cookie" placeholder="登录后自动填充 Cookie" readonly>
+        
+        <button id="gen-btn" onclick="generate()" disabled>请先完成登录</button>
+        <p id="status" style="font-size: 14px; margin-top: 10px;"></p>
     </div>
 
     <script>
+        let timer = null;
+
+        // --- 登录逻辑 ---
+        async function startLogin() {
+            const qrContainer = document.getElementById('qr-container');
+            const qrImg = document.getElementById('qr-img');
+            const qrStatus = document.getElementById('qr-status');
+            
+            qrContainer.style.display = 'block';
+            qrStatus.innerText = '正在加载二维码...';
+
+            // 1. 获取 Key
+            const keyRes = await fetch('/api/login/key');
+            const { data: { unikey } } = await keyRes.json();
+
+            // 2. 获取二维码图片
+            const imgRes = await fetch(`/api/login/create?key=${unikey}`);
+            const { data: { qrimg } } = await imgRes.json();
+            qrImg.src = qrimg;
+            qrStatus.innerText = '请打开网易云 App 扫码';
+
+            // 3. 轮询检查状态
+            if (timer) clearInterval(timer);
+            timer = setInterval(async () => {
+                const checkRes = await fetch(`/api/login/check?key=${unikey}`);
+                const statusData = await checkRes.json();
+
+                if (statusData.code === 800) {
+                    qrStatus.innerText = '二维码已过期，请刷新';
+                    clearInterval(timer);
+                } else if (statusData.code === 802) {
+                    qrStatus.innerText = '扫码成功，请在手机上确认';
+                } else if (statusData.code === 803) {
+                    // 登录成功！
+                    qrStatus.innerText = '✅ 登录成功！';
+                    clearInterval(timer);
+                    document.getElementById('cookie').value = statusData.cookie;
+                    document.getElementById('gen-btn').disabled = false;
+                    document.getElementById('gen-btn').innerText = '立即生成新歌单';
+                    qrContainer.style.display = 'none';
+                }
+            }, 3000);
+        }
+
+        // --- 排歌逻辑 ---
         async function generate() {
-            const btn = document.querySelector('button');
+            const btn = document.getElementById('gen-btn');
             const status = document.getElementById('status');
             const idsValue = document.getElementById('ids').value;
             const duration = document.getElementById('duration').value;
@@ -44,9 +107,9 @@
                     body: JSON.stringify({ playlistIds: ids, duration: parseInt(duration), cookie })
                 });
                 const data = await res.json();
-                if(data.success) status.innerText = '✅ 生成成功！共有 ' + data.count + ' 首歌。请查看你的网易云 App。';
+                if(data.success) status.innerText = '✅ 生成成功！请查看网易云 App。';
                 else status.innerText = '❌ 失败：' + data.message;
-            } catch(e) { status.innerText = '❌ 发生错误，请检查网络或后端状态'; }
+            } catch(e) { status.innerText = '❌ 发生错误'; }
             btn.disabled = false;
         }
     </script>

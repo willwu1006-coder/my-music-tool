@@ -1,7 +1,8 @@
 const express = require('express');
 const axios = require('axios');
 const path = require('path');
-const NeteaseApi = require('NeteaseCloudMusicApi');
+// --- 修改这里：使用正确的引入方式 ---
+const { serveNeteaseCloudMusicApi } = require('NeteaseCloudMusicApi/server');
 
 const app = express();
 app.use(express.json());
@@ -9,7 +10,16 @@ app.use(express.static('public'));
 
 // 自动启动网易云API服务
 const API_PORT = 3000;
-NeteaseApi.serveNeteaseCloudMusicApi({ port: API_PORT });
+async function startApi() {
+    try {
+        await serveNeteaseCloudMusicApi({ port: API_PORT });
+        console.log(`网易云接口已运行在端口: ${API_PORT}`);
+    } catch (err) {
+        console.error('API启动失败:', err);
+    }
+}
+startApi();
+
 const API_URL = `http://localhost:${API_PORT}`;
 
 // 核心逻辑函数

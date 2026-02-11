@@ -6,6 +6,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
+// 默认歌单配置
 const DEFAULT_PLAYLISTS = [
     {name: "慢三中三", url: "https://163cn.tv/1hf8FgU"},
     {name: "平四", url: "https://163cn.tv/1hfRG6R"},
@@ -16,6 +17,7 @@ const DEFAULT_PLAYLISTS = [
     {name: "吉特巴", url: "https://163cn.tv/1hfPAXy"}
 ];
 
+// 洗牌算法
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -24,6 +26,7 @@ function shuffle(array) {
     return array;
 }
 
+// 增强版 ID 解析
 async function getRealId(input) {
     let str = input.trim();
     if (!str) return null;
@@ -35,24 +38,25 @@ async function getRealId(input) {
             const res = await axios.get(urlMatch[0], { maxRedirects: 5, timeout: 5000 });
             const finalMatch = (res.request.res.responseUrl || '').match(/id=(\d+)/);
             return finalMatch ? finalMatch[1] : null;
-        } catch (e) { return null; }
+        } catch (e) { 
+            return null; 
+        }
     }
-    return str.match(/\d{5,12}/)?.[0] || null;
+    const pureIdMatch = str.match(/\d{5,12}/);
+    return pureIdMatch ? pureIdMatch[0] : null;
 }
 
+// 生成歌单接口
 app.post('/api/generate', async (req, res) => {
     try {
         let { playlistIds, duration, cookie } = req.body;
-        // 如果用户没填，则使用默认的7个URL
         const links = (playlistIds && playlistIds.length > 0) ? playlistIds : DEFAULT_PLAYLISTS.map(d => d.url);
 
         // 1. 并发解析 ID
         const realIds = await Promise.all(links.map(l => getRealId(l)));
-        
-        // 检查是否有歌单解析失败
         if (realIds.includes(null)) {
             const failIndex = realIds.indexOf(null);
-            return res.json({ success: false, message: `第 ${failIndex + 1} 个歌单解析失败，请检查链接` });
+            return res.json({ success: false, message: `第 ${failIndex + 1} 个歌单解析失败` });
         }
 
         // 2. 并发获取歌曲
@@ -97,22 +101,26 @@ app.post('/api/generate', async (req, res) => {
 
         await netease.playlist_tracks({ op: 'add', pid: newId, tracks: trackIds, cookie });
         
-        // 返回成功信息和歌曲清单
-        res.json({ 
-            success: true, 
-            count: result.length, 
-            playlistId: newId,
-            songs: result // 传回前端展示
-        });
+        res.json({ success: true, count: result.length, playlistId: newId, songs: result });
     } catch (error) {
+        console.error(error);
         res.json({ success: false, message: '系统错误，请检查登录状态' });
     }
 });
 
 // 登录接口
-app.get('/api/login/key', async (req, res) => res.json((await netease.login_qr_key({})).body));
-app.get('/api/login/create', async (req, res) => res.json((await netease.login_qr_create({ key: req.query.key, qrimg: true })).body));
-app.get('/api/login/check', async (req, res) => res.json((await netease.login_qr_check({ key: req.query.key })).body));
+app.get('/api/login/key', async (req, res) => {
+    try { res.json((await netease.login_qr_key({})).body); } catch (e) { res.json({code: 500}); }
+});
 
+app.get('/api/login/create', async (req, res) => {
+    try { res.json((await netease.login_qr_create({ key: req.query.key, qrimg: true })).body); } catch (e) { res.json({code: 500}); }
+});
+
+app.get('/api/login/check', async (req, res) => {
+    try { res.json((await netease.login_qr_check({ key: req.query.key })).body); } catch (e) { res.json({code: 500}); }
+});
+
+// 启动服务
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`Server started on ${PORT}`));

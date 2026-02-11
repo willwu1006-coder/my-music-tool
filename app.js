@@ -6,15 +6,14 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-// 默认歌单顺序：慢三、平四、伦巴、并四、快三、慢四、吉特巴
 const DEFAULT_PLAYLISTS = [
-    "https://163cn.tv/1hf8FgU", // 慢三
-    "https://163cn.tv/1hfRG6R", // 平四
-    "https://163cn.tv/1hgrkuh", // 伦巴
-    "https://163cn.tv/1hglpuZ", // 并四
-    "https://163cn.tv/1hhfUQZ", // 快三
-    "https://163cn.tv/1hg1gTv", // 慢四
-    "https://163cn.tv/1hfPAXy"  // 吉特巴
+    {name: "慢三中三", url: "https://163cn.tv/1hf8FgU"},
+    {name: "平四", url: "https://163cn.tv/1hfRG6R"},
+    {name: "伦巴", url: "https://163cn.tv/1hgrkuh"},
+    {name: "并四", url: "https://163cn.tv/1hglpuZ"},
+    {name: "快三", url: "https://163cn.tv/1hhfUQZ"},
+    {name: "慢四", url: "https://163cn.tv/1hg1gTv"},
+    {name: "吉特巴", url: "https://163cn.tv/1hfPAXy"}
 ];
 
 function shuffle(array) {
@@ -25,7 +24,6 @@ function shuffle(array) {
     return array;
 }
 
-// 快速解析 ID
 async function getRealId(input) {
     let str = input.trim();
     if (!str) return null;
@@ -34,7 +32,7 @@ async function getRealId(input) {
     const urlMatch = str.match(/https?:\/\/[^\s]+/);
     if (urlMatch) {
         try {
-            const res = await axios.get(urlMatch[0], { maxRedirects: 5, timeout: 3000 });
+            const res = await axios.get(urlMatch[0], { maxRedirects: 5, timeout: 5000 });
             const finalMatch = (res.request.res.responseUrl || '').match(/id=(\d+)/);
             return finalMatch ? finalMatch[1] : null;
         } catch (e) { return null; }
@@ -45,23 +43,26 @@ async function getRealId(input) {
 app.post('/api/generate', async (req, res) => {
     try {
         let { playlistIds, duration, cookie } = req.body;
-        const links = (playlistIds && playlistIds.length > 0) ? playlistIds : DEFAULT_PLAYLISTS;
+        // 如果用户没填，则使用默认的7个URL
+        const links = (playlistIds && playlistIds.length > 0) ? playlistIds : DEFAULT_PLAYLISTS.map(d => d.url);
 
-        // --- 性能优化：并发解析所有 ID ---
-        const idPromises = links.map(link => getRealId(link));
-        const realIds = (await Promise.all(idPromises)).filter(id => id);
+        // 1. 并发解析 ID
+        const realIds = await Promise.all(links.map(l => getRealId(l)));
+        
+        // 检查是否有歌单解析失败
+        if (realIds.includes(null)) {
+            const failIndex = realIds.indexOf(null);
+            return res.json({ success: false, message: `第 ${failIndex + 1} 个歌单解析失败，请检查链接` });
+        }
 
-        // --- 性能优化：并发获取所有歌单详情 ---
-        const dataPromises = realIds.map(id => netease.playlist_track_all({ id, cookie }));
-        const responses = await Promise.all(dataPromises);
-        const allPlaylistsData = responses.map(r => r.body.songs).filter(s => s);
+        // 2. 并发获取歌曲
+        const responses = await Promise.all(realIds.map(id => netease.playlist_track_all({ id, cookie })));
+        const allData = responses.map(r => r.body.songs);
 
-        if (allPlaylistsData.length === 0) return res.json({ success: false, message: '解析失败' });
-
-        // 逻辑合并
+        // 3. 严格轮询逻辑
         const targetMs = duration * 60 * 1000;
         let result = [], currentMs = 0, usedIds = new Set();
-        const randomized = allPlaylistsData.map(list => shuffle([...list]));
+        const randomized = allData.map(list => shuffle([...list]));
         let pointers = new Array(randomized.length).fill(0), hasMore = true;
 
         while (currentMs < targetMs && hasMore) {
@@ -71,7 +72,12 @@ app.post('/api/generate', async (req, res) => {
                     hasMore = true;
                     const song = randomized[i][pointers[i]++];
                     if (!usedIds.has(song.id)) {
-                        result.push(song);
+                        result.push({
+                            id: song.id,
+                            name: song.name,
+                            ar: song.ar.map(a => a.name).join('/'),
+                            dt: song.dt
+                        });
                         usedIds.add(song.id);
                         currentMs += (song.dt || 0);
                     }
@@ -80,33 +86,33 @@ app.post('/api/generate', async (req, res) => {
             }
         }
 
-        // --- 解决倒序：反转数组，确保第一首在 App 最上方 ---
+        // 4. 解决倒序：反转 ID 数组
         const trackIds = result.map(s => s.id).reverse().join(',');
 
         const createRes = await netease.playlist_create({
-            name: `舞厅专业混排_${new Date().toLocaleDateString()}`,
+            name: `DanceTool_${new Date().toLocaleDateString()}`,
             cookie
         });
         const newId = createRes.body.id;
 
         await netease.playlist_tracks({ op: 'add', pid: newId, tracks: trackIds, cookie });
-        res.json({ success: true, count: result.length, playlistId: newId });
+        
+        // 返回成功信息和歌曲清单
+        res.json({ 
+            success: true, 
+            count: result.length, 
+            playlistId: newId,
+            songs: result // 传回前端展示
+        });
     } catch (error) {
-        res.json({ success: false, message: '生成出错' });
+        res.json({ success: false, message: '系统错误，请检查登录状态' });
     }
 });
 
-// 登录接口简写
+// 登录接口
 app.get('/api/login/key', async (req, res) => res.json((await netease.login_qr_key({})).body));
 app.get('/api/login/create', async (req, res) => res.json((await netease.login_qr_create({ key: req.query.key, qrimg: true })).body));
 app.get('/api/login/check', async (req, res) => res.json((await netease.login_qr_check({ key: req.query.key })).body));
 
-// --- 端口占用保护逻辑 ---
 const PORT = process.env.PORT || 8080;
-const server = app.listen(PORT, () => console.log(`Server on ${PORT}`))
-    .on('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-            console.log('端口占用，正在重试...');
-            setTimeout(() => { server.close(); server.listen(PORT); }, 1000);
-        }
-    });
+app.listen(PORT, () => console.log(`Server started on ${PORT}`));

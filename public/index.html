@@ -4,60 +4,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dance Music Tool</title>
+    <!-- 引入生成海报的插件 -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;600&display=swap');
+        :root { --red: #e53935; --dark: #121212; --gray: #1e1e1e; }
+        body { background: var(--dark); color: #fff; font-family: 'Inter', system-ui, sans-serif; margin: 0; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; }
         
-        :root { --accent: #c62828; --text: #2c3e50; --bg: #f8f9fa; }
-        body { 
-            margin: 0; background: var(--bg); color: var(--text);
-            font-family: 'Inter', sans-serif; display: flex; justify-content: center; padding: 60px 20px;
-        }
-        .container { width: 100%; max-width: 800px; animation: slideUp 1s cubic-bezier(0.2, 0.8, 0.2, 1); }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-
-        header { text-align: center; margin-bottom: 50px; }
-        h1 { font-family: 'Playfair Display', serif; font-size: 48px; margin: 0; letter-spacing: -1px; color: #000; }
-        .tagline { font-size: 14px; text-transform: uppercase; letter-spacing: 3px; color: #999; margin-top: 10px; }
-
-        .main-card { 
-            background: #fff; border-radius: 2px; padding: 40px;
-            box-shadow: 0 30px 60px rgba(0,0,0,0.05); border: 1px solid #eee;
-        }
-
-        .input-group { margin-bottom: 30px; }
-        label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 10px; color: #bbb; }
+        .container { width: 100%; max-width: 500px; }
+        header { text-align: center; margin-bottom: 40px; }
+        h1 { font-size: 36px; letter-spacing: -1px; margin: 0; background: linear-gradient(to right, #fff, var(--red)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .panel { background: var(--gray); border-radius: 24px; padding: 30px; border: 1px solid #333; margin-bottom: 20px; }
+        label { font-size: 11px; color: var(--red); font-weight: bold; text-transform: uppercase; margin-bottom: 10px; display: block; }
         
         textarea, input { 
-            width: 100%; border: none; border-bottom: 1px solid #eee; padding: 15px 0;
-            font-size: 16px; outline: none; transition: 0.3s; background: transparent; font-family: inherit;
+            width: 100%; background: #000; border: 1px solid #333; border-radius: 12px; color: #fff;
+            padding: 15px; box-sizing: border-box; margin-bottom: 20px; outline: none; font-size: 14px;
         }
-        textarea:focus, input:focus { border-bottom-color: var(--accent); }
-
-        .btn-stack { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        
         button { 
-            padding: 20px; border: none; cursor: pointer; font-size: 14px; font-weight: 600;
-            transition: 0.4s; text-transform: uppercase; letter-spacing: 1px;
+            width: 100%; padding: 16px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; transition: 0.3s;
         }
-        .btn-login { background: #f1f1f1; color: #666; }
-        .btn-gen { background: #000; color: #fff; }
-        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-        button:disabled { opacity: 0.3; cursor: not-allowed; }
+        .btn-main { background: var(--red); color: #fff; font-size: 16px; }
+        .btn-sub { background: #333; color: #ccc; margin-bottom: 15px; font-size: 13px; }
+        button:hover:not(:disabled) { transform: scale(1.02); filter: brightness(1.1); }
+        button:disabled { opacity: 0.3; }
 
-        #qr-view { text-align: center; padding: 30px; border: 1px dashed #ddd; margin-bottom: 30px; display: none; }
-        #qr-img { width: 150px; height: 150px; margin-bottom: 10px; }
+        #qr-view { text-align: center; margin-bottom: 20px; display: none; }
+        #qr-img { width: 160px; height: 160px; border-radius: 10px; border: 5px solid #fff; }
 
-        /* 结果列表样式 */
-        #result-view { margin-top: 50px; display: none; }
-        h3 { font-family: 'Playfair Display', serif; font-size: 24px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-        .song-list { list-style: none; padding: 0; }
-        .song-item { 
-            display: grid; grid-template-columns: 40px 1fr 1fr; 
-            padding: 15px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px;
+        /* 结果列表展示 */
+        #result-view { width: 100%; margin-top: 30px; display: none; }
+        .song-card { background: #000; border: 1px solid #222; margin-bottom: 8px; padding: 15px; border-radius: 12px; display: flex; align-items: center; }
+        .song-type { background: var(--red); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-right: 12px; min-width: 50px; text-align: center; }
+        .song-info { flex: 1; overflow: hidden; }
+        .song-name { font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .song-ar { font-size: 12px; color: #777; }
+
+        /* 海报模版（平时隐藏） */
+        #poster-tpl { 
+            position: absolute; left: -9999px; top: 0;
+            width: 400px; background: #000; padding: 40px; color: #fff; 
         }
-        .song-index { color: #ccc; font-weight: bold; }
-        .song-ar { color: #999; text-align: right; }
-
-        #status-msg { margin-top: 20px; font-size: 14px; text-align: center; font-style: italic; }
+        .poster-header { border-left: 4px solid var(--red); padding-left: 15px; margin-bottom: 30px; }
+        .poster-item { font-size: 14px; margin-bottom: 12px; display: flex; }
+        .poster-type { color: var(--red); margin-right: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -65,40 +56,41 @@
 <div class="container">
     <header>
         <h1>Dance Music Tool</h1>
-        <div class="tagline">Curated Sequential Rhythm Engine</div>
     </header>
 
-    <div class="main-card">
+    <div class="panel">
         <div id="qr-view">
             <img id="qr-img" src="" alt="QR">
-            <div id="qr-msg">请使用网易云 App 扫码</div>
+            <div id="qr-msg" style="margin-top:10px; font-size:12px; color:#aaa;">等待扫码确认...</div>
         </div>
 
-        <div class="input-group">
-            <label>Custom Playlists (Optional)</label>
-            <textarea id="ids" rows="2" placeholder="Leave empty for default 7 dance styles..."></textarea>
-        </div>
-
-        <div class="input-group">
-            <label>Target Duration (Minutes)</label>
-            <input type="number" id="duration" placeholder="e.g. 120">
-        </div>
-
-        <input type="hidden" id="cookie">
+        <button id="l-btn" class="btn-sub" onclick="startLogin()">第一步：扫码登录账号</button>
         
-        <div class="btn-stack">
-            <button class="btn-login" id="l-btn" onclick="startLogin()">Login</button>
-            <button class="btn-gen" id="g-btn" onclick="generate()" disabled>Generate</button>
-        </div>
+        <label>自定义歌单链接 (留空使用默认舞种)</label>
+        <textarea id="ids" rows="2" placeholder="支持多链接，用换行或逗号分隔..."></textarea>
         
-        <div id="status-msg"></div>
+        <label>舞会总时长 (分钟)</label>
+        <input type="number" id="duration" placeholder="建议 120">
+
+        <button id="g-btn" class="btn-main" onclick="generate()" disabled>请先完成登录</button>
     </div>
 
+    <!-- 生成结果展示 -->
     <div id="result-view">
-        <h3>Generated Playlist</h3>
-        <div class="song-list" id="list-body">
-            <!-- 动态填充结果 -->
-        </div>
+        <button class="btn-sub" style="background:var(--red); color:#fff;" onclick="downloadPoster()">下载舞会歌单海报</button>
+        <div id="list-body"></div>
+    </div>
+</div>
+
+<!-- 海报渲染隐藏区域 -->
+<div id="poster-tpl">
+    <div class="poster-header">
+        <div style="font-size: 24px; font-weight: bold;">DANCE MUSIC</div>
+        <div id="p-date" style="font-size: 12px; color: #888;"></div>
+    </div>
+    <div id="p-list"></div>
+    <div style="margin-top: 40px; border-top: 1px solid #222; padding-top: 20px; font-size: 10px; color: #555; text-align: center;">
+        Generated by Dance Music Tool
     </div>
 </div>
 
@@ -114,23 +106,22 @@
             const res = await (await fetch(`/api/login/check?key=${unikey}`)).json();
             if (res.code === 803) {
                 clearInterval(timer);
-                document.getElementById('cookie').value = res.cookie;
                 document.getElementById('g-btn').disabled = false;
-                document.getElementById('g-btn').innerText = 'Ready to Generate';
+                document.getElementById('g-btn').innerText = '开始生成舞会歌单';
                 box.style.display = 'none';
-                btn.innerText = 'Authenticated';
+                btn.innerText = '已成功授权';
+                window.localCookie = res.cookie;
             }
         }, 3000);
     }
 
     async function generate() {
-        const s = document.getElementById('status-msg'), btn = document.getElementById('g-btn');
+        const btn = document.getElementById('g-btn');
         const dur = document.getElementById('duration').value;
-        if(!dur) return alert('Duration required');
+        if(!dur) return alert('请填入时长');
 
-        btn.disabled = true; s.innerText = 'Creating your rhythmic journey...';
-        document.getElementById('result-view').style.display = 'none';
-
+        btn.disabled = true; btn.innerText = '正在极速编排中...';
+        
         try {
             const res = await fetch('/api/generate', {
                 method: 'POST',
@@ -138,35 +129,54 @@
                 body: JSON.stringify({ 
                     playlistIds: document.getElementById('ids').value.split(/[\n,，;]/).filter(i=>i.trim()),
                     duration: parseInt(dur), 
-                    cookie: document.getElementById('cookie').value 
+                    cookie: window.localCookie
                 })
             });
             const data = await res.json();
             if(data.success) {
-                s.innerText = 'Success. Playlist synced to your account.';
-                showResult(data.songs);
+                renderList(data.songs);
+                btn.innerText = '生成完毕';
             } else {
-                s.innerText = 'Error: ' + data.message;
+                alert(data.message);
+                btn.disabled = false;
             }
-        } catch(e) { s.innerText = 'Network error occurred.'; }
-        btn.disabled = false;
+        } catch(e) { alert('网络错误'); btn.disabled = false; }
     }
 
-    function showResult(songs) {
-        const view = document.getElementById('result-view');
+    function renderList(songs) {
         const body = document.getElementById('list-body');
-        body.innerHTML = '';
-        songs.forEach((song, index) => {
+        const pList = document.getElementById('p-list');
+        body.innerHTML = ''; pList.innerHTML = '';
+        document.getElementById('p-date').innerText = new Date().toLocaleDateString() + ' PLAYLIST';
+
+        songs.forEach(song => {
+            // 网页展示项
             body.innerHTML += `
-                <div class="song-item">
-                    <span class="song-index">${(index + 1).toString().padStart(2, '0')}</span>
-                    <span class="song-name">${song.name}</span>
-                    <span class="song-ar">${song.ar}</span>
-                </div>
-            `;
+                <div class="song-card">
+                    <div class="song-type">${song.type}</div>
+                    <div class="song-info">
+                        <div class="song-name">${song.name}</div>
+                        <div class="song-ar">${song.ar}</div>
+                    </div>
+                </div>`;
+            // 海报模版项
+            pList.innerHTML += `
+                <div class="poster-item">
+                    <span class="poster-type">${song.type}</span>
+                    <span>${song.name}</span>
+                </div>`;
         });
-        view.style.display = 'block';
-        window.scrollTo({ top: view.offsetTop, behavior: 'smooth' });
+        document.getElementById('result-view').style.display = 'block';
+    }
+
+    function downloadPoster() {
+        const tpl = document.getElementById('poster-tpl');
+        html2canvas(tpl, { backgroundColor: '#000' }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = `DancePlaylist_${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        });
     }
 </script>
 </body>

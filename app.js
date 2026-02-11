@@ -17,7 +17,6 @@ const DEFAULT_PLAYLISTS = [
     "https://163cn.tv/1hfPAXy"  // 吉特巴
 ];
 
-// 洗牌算法：用于歌单内部随机
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -26,100 +25,83 @@ function shuffle(array) {
     return array;
 }
 
-// 增强版 ID 解析
+// 快速解析 ID
 async function getRealId(input) {
     let str = input.trim();
     if (!str) return null;
+    const directMatch = str.match(/id=(\d+)/);
+    if (directMatch) return directMatch[1];
     const urlMatch = str.match(/https?:\/\/[^\s]+/);
     if (urlMatch) {
-        const url = urlMatch[0];
-        const idMatch = url.match(/id=(\d+)/);
-        if (idMatch) return idMatch[1];
         try {
-            const res = await axios.get(url, { maxRedirects: 5, headers: { 'User-Agent': 'Mozilla/5.0' } });
-            const finalUrl = res.request.res.responseUrl || '';
-            const finalMatch = finalUrl.match(/id=(\d+)/);
+            const res = await axios.get(urlMatch[0], { maxRedirects: 5, timeout: 3000 });
+            const finalMatch = (res.request.res.responseUrl || '').match(/id=(\d+)/);
             return finalMatch ? finalMatch[1] : null;
         } catch (e) { return null; }
     }
-    const pureIdMatch = str.match(/\d{5,12}/);
-    return pureIdMatch ? pureIdMatch[0] : null;
-}
-
-// 核心逻辑：分类内随机 + 分类间严格轮询
-function mergePlaylistsAdvanced(playlists, targetMin) {
-    const targetMs = targetMin * 60 * 1000;
-    let result = [];
-    let currentMs = 0;
-    let usedSongIds = new Set();
-    
-    // 1. 【关键】先对每一个歌单内部进行随机洗牌
-    const randomizedPlaylists = playlists.map(list => shuffle([...list]));
-    
-    let pointers = new Array(randomizedPlaylists.length).fill(0);
-    let hasMore = true;
-
-    while (currentMs < targetMs && hasMore) {
-        hasMore = false;
-        // 2. 严格按照 1-7 的顺序循环抽取
-        for (let i = 0; i < randomizedPlaylists.length; i++) {
-            const list = randomizedPlaylists[i];
-            if (pointers[i] < list.length) {
-                hasMore = true;
-                const song = list[pointers[i]];
-                pointers[i]++;
-                
-                if (!usedSongIds.has(song.id)) {
-                    result.push(song);
-                    usedSongIds.add(song.id);
-                    currentMs += (song.dt || 0);
-                }
-                if (currentMs >= targetMs) break;
-            }
-        }
-    }
-    return result;
+    return str.match(/\d{5,12}/)?.[0] || null;
 }
 
 app.post('/api/generate', async (req, res) => {
     try {
         let { playlistIds, duration, cookie } = req.body;
-        const targetLinks = (playlistIds && playlistIds.length > 0) ? playlistIds : DEFAULT_PLAYLISTS;
-        
-        let allPlaylistsData = [];
-        for (let input of targetLinks) {
-            const realId = await getRealId(input);
-            if (realId) {
-                const result = await netease.playlist_track_all({ id: realId, cookie: cookie });
-                if (result.body.songs) allPlaylistsData.push(result.body.songs);
+        const links = (playlistIds && playlistIds.length > 0) ? playlistIds : DEFAULT_PLAYLISTS;
+
+        // --- 性能优化：并发解析所有 ID ---
+        const idPromises = links.map(link => getRealId(link));
+        const realIds = (await Promise.all(idPromises)).filter(id => id);
+
+        // --- 性能优化：并发获取所有歌单详情 ---
+        const dataPromises = realIds.map(id => netease.playlist_track_all({ id, cookie }));
+        const responses = await Promise.all(dataPromises);
+        const allPlaylistsData = responses.map(r => r.body.songs).filter(s => s);
+
+        if (allPlaylistsData.length === 0) return res.json({ success: false, message: '解析失败' });
+
+        // 逻辑合并
+        const targetMs = duration * 60 * 1000;
+        let result = [], currentMs = 0, usedIds = new Set();
+        const randomized = allPlaylistsData.map(list => shuffle([...list]));
+        let pointers = new Array(randomized.length).fill(0), hasMore = true;
+
+        while (currentMs < targetMs && hasMore) {
+            hasMore = false;
+            for (let i = 0; i < randomized.length; i++) {
+                if (pointers[i] < randomized[i].length) {
+                    hasMore = true;
+                    const song = randomized[i][pointers[i]++];
+                    if (!usedIds.has(song.id)) {
+                        result.push(song);
+                        usedIds.add(song.id);
+                        currentMs += (song.dt || 0);
+                    }
+                    if (currentMs >= targetMs) break;
+                }
             }
         }
 
-        if (allPlaylistsData.length === 0) return res.json({ success: false, message: '无法解析歌单' });
+        // --- 解决倒序：反转数组，确保第一首在 App 最上方 ---
+        const trackIds = result.map(s => s.id).reverse().join(',');
 
-        const finalSongs = mergePlaylistsAdvanced(allPlaylistsData, duration);
-        const trackIds = finalSongs.map(s => s.id).join(',');
-
-        // 创建新歌单
         const createRes = await netease.playlist_create({
-            name: `舞厅混排_${new Date().toLocaleDateString()}`,
-            cookie: cookie
+            name: `舞厅专业混排_${new Date().toLocaleDateString()}`,
+            cookie
         });
         const newId = createRes.body.id;
 
-        // 批量添加歌曲（API 会按数组顺序排列，第一个 ID 在最上方）
-        await netease.playlist_tracks({ op: 'add', pid: newId, tracks: trackIds, cookie: cookie });
-        
-        res.json({ success: true, count: finalSongs.length, playlistId: newId });
+        await netease.playlist_tracks({ op: 'add', pid: newId, tracks: trackIds, cookie });
+        res.json({ success: true, count: result.length, playlistId: newId });
     } catch (error) {
-        res.json({ success: false, message: '生成失败，请确认是否登录' });
+        res.json({ success: false, message: '生成出错' });
     }
 });
 
-// 登录接口
+// 登录接口简写
 app.get('/api/login/key', async (req, res) => res.json((await netease.login_qr_key({})).body));
 app.get('/api/login/create', async (req, res) => res.json((await netease.login_qr_create({ key: req.query.key, qrimg: true })).body));
 app.get('/api/login/check', async (req, res) => res.json((await netease.login_qr_check({ key: req.query.key })).body));
+
+app.listen(process.env.PORT || 8080);
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`Running on ${PORT}`));

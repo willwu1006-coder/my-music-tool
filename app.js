@@ -8,7 +8,7 @@ app.use(express.static('public'));
 
 // 1. 默认歌单（直接使用 ID，速度最快）
 const DEFAULT_PLAYLISTS = [
-    { name: "慢三中三", id: "8425345141" },
+    { name: "慢三", id: "8425345141" },
     { name: "平四", id: "8425653027" },
     { name: "伦巴", id: "8425693717" },
     { name: "并四", id: "8842144798" },

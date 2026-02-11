@@ -3,99 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dance Music Tool</title>
-    <!-- 引入生成海报的插件 -->
+    <title>Dance Music Tool | 专业舞曲排歌</title>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
-        :root { --red: #e53935; --dark: #121212; --gray: #1e1e1e; }
-        body { background: var(--dark); color: #fff; font-family: 'Inter', system-ui, sans-serif; margin: 0; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700&family=Inter:wght@400;700&display=swap');
+
+        :root { --red: #E53935; --dark: #0A0A0A; --gray: #1A1A1A; }
         
-        .container { width: 100%; max-width: 500px; }
-        header { text-align: center; margin-bottom: 40px; }
-        h1 { font-size: 36px; letter-spacing: -1px; margin: 0; background: linear-gradient(to right, #fff, var(--red)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        body { background: var(--dark); color: #fff; font-family: 'Inter', sans-serif; margin: 0; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; }
         
-        .panel { background: var(--gray); border-radius: 24px; padding: 30px; border: 1px solid #333; margin-bottom: 20px; }
-        label { font-size: 11px; color: var(--red); font-weight: bold; text-transform: uppercase; margin-bottom: 10px; display: block; }
+        /* 页面 UI */
+        .container { width: 100%; max-width: 480px; }
+        .panel { background: var(--gray); border-radius: 24px; padding: 30px; border: 1px solid #222; margin-bottom: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+        h1 { font-family: 'Noto Serif SC', serif; font-size: 28px; text-align: center; margin-bottom: 30px; color: var(--red); letter-spacing: 2px; }
         
-        textarea, input { 
-            width: 100%; background: #000; border: 1px solid #333; border-radius: 12px; color: #fff;
-            padding: 15px; box-sizing: border-box; margin-bottom: 20px; outline: none; font-size: 14px;
-        }
+        label { font-size: 11px; color: #666; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; display: block; }
+        textarea, input { width: 100%; background: #000; border: 1px solid #333; border-radius: 12px; color: #fff; padding: 14px; box-sizing: border-box; margin-bottom: 20px; outline: none; }
         
-        button { 
-            width: 100%; padding: 16px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; transition: 0.3s;
-        }
+        button { width: 100%; padding: 16px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .btn-main { background: var(--red); color: #fff; font-size: 16px; }
-        .btn-sub { background: #333; color: #ccc; margin-bottom: 15px; font-size: 13px; }
-        button:hover:not(:disabled) { transform: scale(1.02); filter: brightness(1.1); }
+        .btn-sub { background: #333; color: #ccc; margin-top: 10px; font-size: 13px; }
+        button:hover { transform: translateY(-2px); filter: brightness(1.1); }
         button:disabled { opacity: 0.3; }
 
-        #qr-view { text-align: center; margin-bottom: 20px; display: none; }
-        #qr-img { width: 160px; height: 160px; border-radius: 10px; border: 5px solid #fff; }
+        #qr-view { text-align: center; padding: 20px; border: 1px dashed #444; border-radius: 15px; margin-bottom: 20px; display: none; }
+        #qr-img { width: 150px; height: 150px; border: 4px solid #fff; }
 
-        /* 结果列表展示 */
-        #result-view { width: 100%; margin-top: 30px; display: none; }
-        .song-card { background: #000; border: 1px solid #222; margin-bottom: 8px; padding: 15px; border-radius: 12px; display: flex; align-items: center; }
-        .song-type { background: var(--red); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-right: 12px; min-width: 50px; text-align: center; }
-        .song-info { flex: 1; overflow: hidden; }
-        .song-name { font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .song-ar { font-size: 12px; color: #777; }
+        /* 生成后的列表预览 */
+        #result-view { width: 100%; display: none; margin-top: 20px; }
+        .preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
 
-        /* 海报模版（平时隐藏） */
-        #poster-tpl { 
-            position: absolute; left: -9999px; top: 0;
-            width: 400px; background: #000; padding: 40px; color: #fff; 
+        /* --- 海报模版样式 (由 html2canvas 渲染) --- */
+        #poster-wrap { 
+            position: absolute; left: -9999px; /* 隐藏在视线外 */
+            width: 500px; background: #000; padding: 60px 40px; color: #fff; 
+            box-sizing: border-box; border: 1px solid #333;
         }
-        .poster-header { border-left: 4px solid var(--red); padding-left: 15px; margin-bottom: 30px; }
-        .poster-item { font-size: 14px; margin-bottom: 12px; display: flex; }
-        .poster-type { color: var(--red); margin-right: 15px; font-weight: bold; }
+        .poster-title { font-family: 'Noto Serif SC', serif; font-size: 42px; text-align: center; border-bottom: 2px solid var(--red); padding-bottom: 15px; margin-bottom: 10px; }
+        .poster-subtitle { text-align: center; font-size: 14px; color: #888; letter-spacing: 4px; margin-bottom: 40px; }
+        
+        .table-head { display: flex; padding: 10px 0; border-bottom: 1px solid #333; color: var(--red); font-size: 12px; font-weight: bold; }
+        .col-id { width: 60px; }
+        .col-info { flex: 1; }
+        .col-time { width: 60px; text-align: right; }
+
+        .p-song-item { display: flex; padding: 15px 0; border-bottom: 1px solid #111; align-items: baseline; }
+        .p-type { font-size: 12px; font-weight: bold; color: var(--red); width: 60px; }
+        .p-main { flex: 1; padding-right: 10px; }
+        .p-name { font-size: 16px; font-weight: bold; margin-bottom: 4px; display: block; }
+        .p-ar { font-size: 12px; color: #777; }
+        .p-dt { width: 60px; text-align: right; font-size: 12px; color: #555; }
+
+        .poster-footer { margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .total-box { border-left: 3px solid var(--red); padding-left: 15px; }
+        .total-label { font-size: 10px; color: #666; text-transform: uppercase; }
+        .total-val { font-size: 20px; font-weight: bold; font-family: 'Inter'; }
+        .brand { font-size: 10px; color: #333; text-align: right; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header>
-        <h1>Dance Music Tool</h1>
-    </header>
-
+    <h1>DANCE MUSIC</h1>
+    
     <div class="panel">
         <div id="qr-view">
             <img id="qr-img" src="" alt="QR">
-            <div id="qr-msg" style="margin-top:10px; font-size:12px; color:#aaa;">等待扫码确认...</div>
+            <div id="qr-msg" style="margin-top:10px; font-size:12px; color:#aaa;">等待扫码...</div>
         </div>
 
-        <button id="l-btn" class="btn-sub" onclick="startLogin()">第一步：扫码登录账号</button>
+        <button id="l-btn" class="btn-sub" onclick="startLogin()">Login to NetEase</button>
+        <div style="height: 20px;"></div>
         
-        <label>自定义歌单链接 (留空使用默认舞种)</label>
-        <textarea id="ids" rows="2" placeholder="支持多链接，用换行或逗号分隔..."></textarea>
+        <label>Playlist Links</label>
+        <textarea id="ids" rows="2" placeholder="Leave empty for default..."></textarea>
         
-        <label>舞会总时长 (分钟)</label>
-        <input type="number" id="duration" placeholder="建议 120">
+        <label>Duration (Mins)</label>
+        <input type="number" id="duration" placeholder="e.g. 120">
 
-        <button id="g-btn" class="btn-main" onclick="generate()" disabled>请先完成登录</button>
+        <button id="g-btn" class="btn-main" onclick="generate()" disabled>AUTHENTICATE FIRST</button>
     </div>
 
-    <!-- 生成结果展示 -->
     <div id="result-view">
-        <button class="btn-sub" style="background:var(--red); color:#fff;" onclick="downloadPoster()">下载舞会歌单海报</button>
-        <div id="list-body"></div>
+        <div class="preview-header">
+            <span style="font-weight: bold; font-size: 14px;">Preview List</span>
+            <button onclick="downloadPoster()" style="width: auto; padding: 8px 15px; background: var(--red); font-size: 12px;">Save Poster Image</button>
+        </div>
+        <div id="list-preview" style="font-size: 12px; color: #888;">列表已生成，点击上方按钮下载海报。</div>
     </div>
 </div>
 
-<!-- 海报渲染隐藏区域 -->
-<div id="poster-tpl">
-    <div class="poster-header">
-        <div style="font-size: 24px; font-weight: bold;">DANCE MUSIC</div>
-        <div id="p-date" style="font-size: 12px; color: #888;"></div>
+<!-- 隐藏的海报模版 -->
+<div id="poster-wrap">
+    <div class="poster-title">舞会歌单</div>
+    <div class="poster-subtitle" id="p-date">SETLIST SESSION</div>
+
+    <div class="table-head">
+        <div class="col-id">STYLE</div>
+        <div class="col-info">SONG & ARTIST</div>
+        <div class="col-time">TIME</div>
     </div>
-    <div id="p-list"></div>
-    <div style="margin-top: 40px; border-top: 1px solid #222; padding-top: 20px; font-size: 10px; color: #555; text-align: center;">
-        Generated by Dance Music Tool
+
+    <div id="p-list-container">
+        <!-- 动态填充歌曲 -->
+    </div>
+
+    <div class="poster-footer">
+        <div class="total-box">
+            <div class="total-label">Estimated Duration</div>
+            <div class="total-val" id="p-total-time">00:00:00</div>
+        </div>
+        <div class="brand">
+            DESIGNED BY<br>DANCE MUSIC TOOL
+        </div>
     </div>
 </div>
 
 <script>
     let timer = null;
+    
+    // 格式化毫秒为 mm:ss
+    function formatTime(ms) {
+        const s = Math.floor(ms / 1000);
+        const m = Math.floor(s / 60);
+        return `${m}:${(s % 60).toString().padStart(2, '0')}`;
+    }
+
     async function startLogin() {
         const box = document.getElementById('qr-view'), img = document.getElementById('qr-img'), btn = document.getElementById('l-btn');
         box.style.display = 'block'; btn.disabled = true;
@@ -107,9 +140,9 @@
             if (res.code === 803) {
                 clearInterval(timer);
                 document.getElementById('g-btn').disabled = false;
-                document.getElementById('g-btn').innerText = '开始生成舞会歌单';
+                document.getElementById('g-btn').innerText = 'GENERATE PLAYLIST';
                 box.style.display = 'none';
-                btn.innerText = '已成功授权';
+                btn.innerText = 'AUTHENTICATED';
                 window.localCookie = res.cookie;
             }
         }, 3000);
@@ -118,9 +151,9 @@
     async function generate() {
         const btn = document.getElementById('g-btn');
         const dur = document.getElementById('duration').value;
-        if(!dur) return alert('请填入时长');
+        if(!dur) return alert('Duration required');
 
-        btn.disabled = true; btn.innerText = '正在极速编排中...';
+        btn.disabled = true; btn.innerText = 'PROCESSING...';
         
         try {
             const res = await fetch('/api/generate', {
@@ -134,47 +167,49 @@
             });
             const data = await res.json();
             if(data.success) {
-                renderList(data.songs);
-                btn.innerText = '生成完毕';
+                buildPoster(data.songs);
+                document.getElementById('result-view').style.display = 'block';
+                btn.innerText = 'GENERATED SUCCESS';
             } else {
                 alert(data.message);
                 btn.disabled = false;
             }
-        } catch(e) { alert('网络错误'); btn.disabled = false; }
+        } catch(e) { alert('Network error'); btn.disabled = false; }
     }
 
-    function renderList(songs) {
-        const body = document.getElementById('list-body');
-        const pList = document.getElementById('p-list');
-        body.innerHTML = ''; pList.innerHTML = '';
-        document.getElementById('p-date').innerText = new Date().toLocaleDateString() + ' PLAYLIST';
-
-        songs.forEach(song => {
-            // 网页展示项
-            body.innerHTML += `
-                <div class="song-card">
-                    <div class="song-type">${song.type}</div>
-                    <div class="song-info">
-                        <div class="song-name">${song.name}</div>
-                        <div class="song-ar">${song.ar}</div>
+    function buildPoster(songs) {
+        const container = document.getElementById('p-list-container');
+        container.innerHTML = '';
+        let totalMs = 0;
+        
+        songs.forEach((song, index) => {
+            totalMs += song.dt;
+            container.innerHTML += `
+                <div class="p-song-item">
+                    <div class="p-type">${song.type}</div>
+                    <div class="p-main">
+                        <span class="p-name">${song.name}</span>
+                        <span class="p-ar">${song.ar}</span>
                     </div>
-                </div>`;
-            // 海报模版项
-            pList.innerHTML += `
-                <div class="poster-item">
-                    <span class="poster-type">${song.type}</span>
-                    <span>${song.name}</span>
+                    <div class="p-dt">${formatTime(song.dt)}</div>
                 </div>`;
         });
-        document.getElementById('result-view').style.display = 'block';
+
+        // 填充页脚
+        document.getElementById('p-total-time').innerText = formatTime(totalMs);
+        document.getElementById('p-date').innerText = new Date().toLocaleDateString() + ' SESSION';
     }
 
     function downloadPoster() {
-        const tpl = document.getElementById('poster-tpl');
-        html2canvas(tpl, { backgroundColor: '#000' }).then(canvas => {
+        const wrap = document.getElementById('poster-wrap');
+        // 使用更高倍率提高清晰度
+        html2canvas(wrap, { 
+            backgroundColor: '#000',
+            scale: 2 
+        }).then(canvas => {
             const link = document.createElement('a');
-            link.download = `DancePlaylist_${Date.now()}.png`;
-            link.href = canvas.toDataURL();
+            link.download = `Dance_Playlist_${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
             link.click();
         });
     }

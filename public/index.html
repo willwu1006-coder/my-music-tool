@@ -1,60 +1,84 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>舞厅专业排歌工具</title>
+    <title>舞曲混排系统</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #000; color: #fff; display: flex; justify-content: center; padding: 20px; margin: 0; }
-        .card { background: #1a1a1a; padding: 30px; border-radius: 24px; width: 100%; max-width: 440px; border: 1px solid #333; }
-        h2 { text-align: center; color: #ff4d4f; font-size: 24px; margin-bottom: 5px; }
-        .hint { font-size: 12px; color: #888; text-align: center; margin-bottom: 25px; line-height: 1.6; }
-        
-        .label { font-size: 11px; color: #ff4d4f; font-weight: bold; margin-bottom: 8px; display: block; letter-spacing: 1px; }
-        textarea, input { 
-            width: 100%; margin-bottom: 15px; padding: 14px; 
-            border: 1px solid #333; border-radius: 12px; 
-            background: #111; color: #fff; box-sizing: border-box;
-            outline: none; transition: 0.3s; font-size: 14px;
+        :root { --red: #ff4d4f; --glass: rgba(255, 255, 255, 0.1); }
+        body { 
+            margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center;
+            background: radial-gradient(circle at top left, #2c0b0b 0%, #000000 100%);
+            font-family: -apple-system, sans-serif; overflow-x: hidden;
         }
-        textarea:focus, input:focus { border-color: #ff4d4f; }
+        /* 动态背景装饰 */
+        body::before {
+            content: ""; position: absolute; width: 300px; height: 300px; 
+            background: var(--red); filter: blur(120px); border-radius: 50%;
+            top: 10%; right: 10%; opacity: 0.3; z-index: -1; animation: float 10s infinite alternate;
+        }
+        @keyframes float { from { transform: translate(0,0); } to { transform: translate(-50px, 50px); } }
+
+        .card { 
+            background: var(--glass); backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 30px;
+            padding: 40px; width: 90%; max-width: 420px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            animation: fadeIn 0.8s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        h1 { color: #fff; margin: 0; font-size: 28px; text-align: center; letter-spacing: -1px; }
+        .subtitle { color: #aaa; text-align: center; font-size: 13px; margin-bottom: 30px; }
+        
+        .label { color: var(--red); font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; display: block; }
+        
+        textarea, input { 
+            width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 15px; color: #fff; padding: 15px; box-sizing: border-box;
+            margin-bottom: 20px; outline: none; transition: 0.3s;
+        }
+        textarea:focus, input:focus { border-color: var(--red); box-shadow: 0 0 15px rgba(255, 77, 79, 0.2); }
         
         button { 
-            width: 100%; padding: 15px; background: #ff4d4f; 
-            color: white; border: none; border-radius: 12px; 
-            cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 10px;
+            width: 100%; padding: 16px; border-radius: 15px; border: none;
+            background: linear-gradient(135deg, #ff4d4f 0%, #b32d2e 100%);
+            color: #fff; font-size: 16px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 10px 20px rgba(179, 45, 46, 0.3); transition: 0.3s;
         }
-        button:disabled { background: #333; color: #666; cursor: not-allowed; }
+        button:hover { transform: scale(1.02); filter: brightness(1.1); }
+        button:disabled { background: #333; box-shadow: none; cursor: not-allowed; opacity: 0.5; }
 
-        .login-btn { background: #333; font-size: 13px; margin-bottom: 10px; }
-        #qr-box { background: #fff; padding: 15px; border-radius: 15px; display: none; text-align: center; margin-bottom: 20px; }
-        #qr-img { width: 160px; height: 160px; }
-        #qr-msg { color: #000; font-size: 12px; margin-top: 5px; font-weight: bold; }
-
-        #status { margin-top: 20px; padding: 12px; border-radius: 10px; font-size: 14px; text-align: center; display: none; }
-        .success { display: block; background: rgba(82, 196, 26, 0.1); color: #52c41a; border: 1px solid #52c41a; }
-        .error { display: block; background: rgba(255, 77, 79, 0.1); color: #ff4d4f; border: 1px solid #ff4d4f; }
+        #qr-box { background: #fff; padding: 20px; border-radius: 20px; text-align: center; margin-bottom: 20px; display: none; }
+        #qr-img { width: 150px; height: 150px; }
+        
+        #status { 
+            margin-top: 20px; padding: 15px; border-radius: 12px; font-size: 14px; 
+            text-align: center; display: none; border: 1px solid transparent;
+        }
+        .loading-bars { display: flex; justify-content: center; gap: 4px; margin-top: 10px; }
+        .bar { width: 3px; height: 15px; background: var(--red); animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { height: 5px; } 50% { height: 20px; } }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2>🎵 舞厅专业排歌</h2>
-        <p class="hint">严格循环：慢三→平四→伦巴→并四→快三→慢四→吉特巴<br>(分类内随机抽取歌曲)</p>
+        <h1>舞厅排歌</h1>
+        <div class="subtitle">严格遵循 1-7 舞种轮询 · 分类内随机</div>
 
-        <span class="label">Step 1. 账号登录</span>
-        <button id="login-btn" class="login-btn" onclick="startLogin()">扫码登录网易云</button>
+        <span class="label">Step 1. 账号授权</span>
+        <button id="login-btn" onclick="startLogin()" style="background: #333; font-size: 14px; margin-bottom: 15px;">扫码登录网易云</button>
         <div id="qr-box">
-            <img id="qr-img" src="" alt="二维码">
-            <div id="qr-msg">准备中...</div>
+            <img id="qr-img" src="" alt="QR">
+            <div id="qr-msg" style="color:#000; font-size:12px; margin-top:10px; font-weight:bold;">加载中...</div>
         </div>
 
-        <span class="label">Step 2. 排歌参数</span>
-        <textarea id="ids" rows="4" placeholder="（选填）粘贴自定义歌单链接。&#10;不填则使用默认 7 类舞曲歌单。&#10;支持回车或逗号分隔。"></textarea>
-        
-        <input type="number" id="duration" placeholder="生成的总时长（分钟）">
+        <span class="label">Step 2. 参数设置</span>
+        <textarea id="ids" rows="3" placeholder="粘贴自定义歌单（留空则用默认）"></textarea>
+        <input type="number" id="duration" placeholder="目标总时长 (分钟)">
         <input type="hidden" id="cookie">
         
-        <button id="gen-btn" onclick="generate()" disabled>请先登录账号</button>
+        <button id="gen-btn" onclick="generate()" disabled>等待授权...</button>
         <div id="status"></div>
     </div>
 
@@ -64,44 +88,47 @@
             const box = document.getElementById('qr-box'), img = document.getElementById('qr-img'), 
                   msg = document.getElementById('qr-msg'), btn = document.getElementById('login-btn');
             box.style.display = 'block'; btn.style.display = 'none';
-            try {
-                const { data: { unikey } } = await (await fetch('/api/login/key')).json();
-                const { data: { qrimg } } = await (await fetch(`/api/login/create?key=${unikey}`)).json();
-                img.src = qrimg; msg.innerText = '请使用网易云 App 扫码';
-                if (timer) clearInterval(timer);
-                timer = setInterval(async () => {
-                    const res = await (await fetch(`/api/login/check?key=${unikey}`)).json();
-                    if (res.code === 802) msg.innerText = '已扫码，请手机确认';
-                    if (res.code === 803) {
-                        msg.innerText = '✅ 登录成功'; clearInterval(timer);
-                        document.getElementById('cookie').value = res.cookie;
-                        document.getElementById('gen-btn').disabled = false;
-                        document.getElementById('gen-btn').innerText = '开始生成歌单';
-                        box.style.display = 'none';
-                    }
-                }, 3000);
-            } catch (e) { msg.innerText = '加载失败'; }
+            const { data: { unikey } } = await (await fetch('/api/login/key')).json();
+            const { data: { qrimg } } = await (await fetch(`/api/login/create?key=${unikey}`)).json();
+            img.src = qrimg; msg.innerText = '请扫码并确认';
+            timer = setInterval(async () => {
+                const res = await (await fetch(`/api/login/check?key=${unikey}`)).json();
+                if (res.code === 803) {
+                    clearInterval(timer);
+                    document.getElementById('cookie').value = res.cookie;
+                    document.getElementById('gen-btn').disabled = false;
+                    document.getElementById('gen-btn').innerText = '开始生成歌单';
+                    box.style.display = 'none';
+                }
+            }, 3000);
         }
 
         async function generate() {
             const status = document.getElementById('status'), btn = document.getElementById('gen-btn');
-            const idsValue = document.getElementById('ids').value, duration = document.getElementById('duration').value, cookie = document.getElementById('cookie').value;
-            if (!duration) return alert('请填写时长');
-            const ids = idsValue.split(/[\n,，;]/).map(i => i.trim()).filter(i => i);
-            btn.disabled = true; status.className = ''; status.style.display = 'block'; status.innerText = '🚀 正在按舞种顺序排歌中...';
+            const duration = document.getElementById('duration').value;
+            if (!duration) return alert('请输入时长');
+            btn.disabled = true;
+            status.style.display = 'block'; status.style.color = '#fff';
+            status.innerHTML = '🚀 并发解析中...<div class="loading-bars"><div class="bar"></div><div class="bar" style="animation-delay:0.1s"></div><div class="bar" style="animation-delay:0.2s"></div></div>';
+            
             try {
                 const res = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ playlistIds: ids, duration: parseInt(duration), cookie })
+                    body: JSON.stringify({ 
+                        playlistIds: document.getElementById('ids').value.split(/[\n,，;]/).filter(i=>i.trim()),
+                        duration: parseInt(duration), 
+                        cookie: document.getElementById('cookie').value 
+                    })
                 });
                 const data = await res.json();
                 if (data.success) {
-                    status.className = 'success'; status.innerText = `✅ 生成成功！共 ${data.count} 首歌。请检查 App。`;
+                    status.style.color = '#52c41a';
+                    status.innerText = `✅ 生成成功！共 ${data.count} 首歌，第一首在最上面。`;
                 } else {
-                    status.className = 'error'; status.innerText = '❌ 失败：' + data.message;
+                    status.style.color = '#ff4d4f'; status.innerText = '❌ 错误：' + data.message;
                 }
-            } catch (e) { status.className = 'error'; status.innerText = '❌ 请求异常'; }
+            } catch (e) { status.innerText = '❌ 请求失败'; }
             btn.disabled = false;
         }
     </script>

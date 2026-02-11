@@ -101,7 +101,12 @@ app.get('/api/login/key', async (req, res) => res.json((await netease.login_qr_k
 app.get('/api/login/create', async (req, res) => res.json((await netease.login_qr_create({ key: req.query.key, qrimg: true })).body));
 app.get('/api/login/check', async (req, res) => res.json((await netease.login_qr_check({ key: req.query.key })).body));
 
-app.listen(process.env.PORT || 8080);
-
+// --- 端口占用保护逻辑 ---
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log(`Running on ${PORT}`));
+const server = app.listen(PORT, () => console.log(`Server on ${PORT}`))
+    .on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.log('端口占用，正在重试...');
+            setTimeout(() => { server.close(); server.listen(PORT); }, 1000);
+        }
+    });

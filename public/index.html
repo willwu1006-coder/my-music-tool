@@ -152,6 +152,14 @@
             <img id="qr-img" style="width:150px; border:1px solid #eee; padding:5px;">
             <div style="font-size:12px; color:var(--gold); margin-top:10px;">请打开网易云音乐App扫码</div>
         </div>
+        <div style="margin-top:10px;">
+            <details>
+                <summary style="font-size:12px; color:#999; cursor:pointer;">扫码失败？手动粘贴 Cookie</summary>
+                <textarea id="manual-cookie" placeholder="在此粘贴网易云 MUSIC_U Cookie..." style="height:60px; margin-top:5px; font-size:11px;"></textarea>
+                <button class="btn btn-sub" onclick="setManualCookie()" style="padding:8px; font-size:11px;">确认使用手动 Cookie</button>
+            </details>
+        </div>
+        
 
         <span class="section-label">2. Source: Search or Import</span>
         <div style="display:flex; gap:10px; margin-bottom:10px;">
@@ -210,6 +218,23 @@
         if(!ms || isNaN(ms)) return "0:00";
         const s = Math.floor(ms / 1000);
         return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+    }
+    
+    function setManualCookie() {
+    const ck = document.getElementById('manual-cookie').value.trim();
+    if(ck) {
+        // 如果用户只粘贴了 MUSIC_U=xxx... 这一段，也可以工作
+        userCookie = ck;
+        document.getElementById('g-btn').disabled = false;
+        document.getElementById('g-btn').innerText = 'Ready (Using Manual Cookie)';
+        
+        // 视觉反馈
+        document.getElementById('l-btn').innerText = 'Authenticated (Manual)';
+        document.getElementById('l-btn').style.color = 'green';
+        alert('Cookie 设置成功！现在可以开始搜索或导入了。');
+    } else {
+        alert('请输入有效的 Cookie');
+    }
     }
 
     // --- 登录逻辑 ---

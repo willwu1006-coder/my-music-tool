@@ -108,7 +108,7 @@
 
 <script>
     let timer = null, requestedSongs = [], currentCookie = "";
-    const styles = ["慢三中三", "平四", "伦巴", "并四", "快三", "慢四", "吉特巴"];
+    const styles = ["慢三", "平四", "伦巴", "并四", "快三", "慢四", "吉特巴"];
 
     function formatTime(ms) {
         const s = Math.floor(ms / 1000);
@@ -186,20 +186,48 @@
         btn.disabled = false; btn.innerText = 'Generate & Sync';
     }
 
-    function renderAll(songs) {
-        const webList = document.getElementById('preview-list'), pList = document.getElementById('p-container');
-        webList.innerHTML = ''; pList.innerHTML = '';
-        let totalMs = 0;
-        songs.forEach((s, i) => {
-            totalMs += s.dt;
-            const row = `<div class="song-row"><span style="color:#ccc italic">${(i+1).toString().padStart(2,'0')}</span><span style="color:var(--gold); font-weight:bold">${s.type}</span><span>${s.name} <small style="color:#999">/ ${s.ar}</small></span><span style="text-align:right; color:#ccc">${formatTime(s.dt)}</span></div>`;
-            const pRow = `<div class="p-item"><div class="p-type">${s.type}</div><div><div style="font-weight:600">${s.name}</div><div style="font-size:12px; color:#999">${s.ar}</div></div><div style="text-align:right; font-size:12px; color:#bbb">${formatTime(s.dt)}</div></div>`;
-            webList.innerHTML += row; pList.innerHTML += pRow;
+
+// 修改 renderAll 函数中的 row 变量，确保 layout 稳定
+function renderAll(songs) {
+    const webList = document.getElementById('preview-list'), pList = document.getElementById('p-container');
+    webList.innerHTML = ''; pList.innerHTML = '';
+    let totalMs = 0;
+    
+    songs.forEach((s, i) => {
+        totalMs += (s.dt || 0);
+        const timeStr = formatTime(s.dt);
+        const typeStr = s.type || "未知舞种"; // 容错处理
+
+        // 网页预览 HTML
+        const row = `
+            <div class="song-row">
+                <span style="color:#ccc; font-style:italic;">${(i+1).toString().padStart(2,'0')}</span>
+                <span style="color:var(--gold); font-weight:bold;">${typeStr}</span>
+                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    ${s.name} <small style="color:#999;">/ ${s.ar}</small>
+                </span>
+                <span style="text-align:right; color:#ccc;">${timeStr}</span>
+            </div>`;
+            
+        // 海报预览 HTML
+        const pRow = `
+            <div class="p-item">
+                <div class="p-type">${typeStr}</div>
+                <div>
+                    <div style="font-weight:600;">${s.name}</div>
+                    <div style="font-size:12px; color:#999;">${s.ar}</div>
+                </div>
+                <div style="text-align:right; font-size:12px; color:#bbb;">${timeStr}</div>
+            </div>`;
+            
+        webList.innerHTML += row;
+        pList.innerHTML += pRow;
         });
-        document.getElementById('p-total').innerText = formatTime(totalMs);
-        document.getElementById('p-date').innerText = new Date().toLocaleDateString() + ' SESSION';
-        document.getElementById('web-preview').style.display = 'block';
-        window.scrollTo({ top: document.getElementById('web-preview').offsetTop, behavior: 'smooth' });
+
+    document.getElementById('p-total').innerText = formatTime(totalMs);
+    document.getElementById('p-date').innerText = new Date().toLocaleDateString() + ' SESSION';
+    document.getElementById('web-preview').style.display = 'block';
+    window.scrollTo({ top: document.getElementById('web-preview').offsetTop, behavior: 'smooth' });
     }
 
     function downloadPoster() {

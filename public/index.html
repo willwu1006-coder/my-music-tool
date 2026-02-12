@@ -148,10 +148,27 @@
     }
 
     function setManualCookie() {
-        userCookie = document.getElementById('manual-cookie').value;
-        if(currentUsername) fetch('/api/auth/update-cookie', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: currentUsername, cookie: userCookie }) });
-        alert('Cookie 已存入');
+    let ck = document.getElementById('manual-cookie').value.trim();
+    if(!ck) return alert('请输入 Cookie');
+
+    // 情况 A：如果你粘贴的是整段 document.cookie (推荐)
+    // 包含 MUSIC_U=xxx; __csrf=xxx; 的格式，直接使用即可
+    if (ck.includes('MUSIC_U=')) {
+        userCookie = ck;
+    } 
+    // 情况 B：如果你只粘贴了 MUSIC_U 的那一串 xxx 值
+    else {
+        // 我们帮它补齐格式。注意：这样可能缺少 __csrf，导致创建歌单失败
+        userCookie = `MUSIC_U=${ck};`; 
+        console.warn('检测到简易模式 Cookie，如果创建歌单失败，请粘贴完整 document.cookie');
     }
+
+    document.getElementById('g-btn').disabled = false;
+    document.getElementById('g-btn').innerText = 'Ready (Using Manual Cookie)';
+    document.getElementById('l-btn').innerText = 'Authenticated (Manual)';
+    document.getElementById('l-btn').style.color = 'green';
+    alert('Cookie 设置成功！');
+}
 
     // 添加逻辑
     async function searchSong() {

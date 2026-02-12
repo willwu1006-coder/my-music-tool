@@ -3,26 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dance Music Tool</title>
+    <title>Dance Music Tool Pro</title>
+    <!-- 引入生成海报所需的库 -->
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;600&display=swap');
-        :root { --accent: #1A3A5F; --gold: #C5A059; --bg: #FDFCF8; }
-        body { background: var(--bg); color: #333; font-family: 'Inter', sans-serif; margin: 0; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; }
+        
+        :root { 
+            --accent: #1A3A5F; 
+            --gold: #C5A059; 
+            --bg: #FDFCF8; 
+            --card-bg: #FFFFFF;
+        }
+
+        body { 
+            background: var(--bg); 
+            color: #333; 
+            font-family: 'Inter', sans-serif; 
+            margin: 0; 
+            padding: 40px 20px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+        }
+
         .container { width: 100%; max-width: 600px; }
         header { text-align: center; margin-bottom: 40px; }
-        h1 { font-family: 'Playfair Display', serif; font-size: 42px; color: var(--accent); margin: 0; }
-        .card { background: #fff; padding: 40px; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #f0ead6; margin-bottom: 30px; }
-        .section-label { font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; display: block; border-bottom: 1px solid #f0ead6; padding-bottom: 5px; }
-        input, textarea, select { width: 100%; border: none; border-bottom: 1px solid #eee; padding: 12px 0; font-size: 15px; outline: none; background: transparent; margin-bottom: 20px; font-family: inherit; }
-        .btn { padding: 18px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; width: 100%; }
+        h1 { font-family: 'Playfair Display', serif; font-size: 36px; color: var(--accent); margin: 0; }
+        
+        .card { 
+            background: var(--card-bg); 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+            border: 1px solid #f0ead6; 
+            margin-bottom: 25px; 
+        }
+
+        .section-label { 
+            font-size: 11px; 
+            font-weight: 700; 
+            color: var(--gold); 
+            text-transform: uppercase; 
+            letter-spacing: 2px; 
+            margin-bottom: 15px; 
+            display: block; 
+            border-bottom: 1px solid #f0ead6; 
+            padding-bottom: 5px; 
+        }
+
+        input, select { 
+            width: 100%; 
+            border: none; 
+            border-bottom: 1px solid #eee; 
+            padding: 12px 0; 
+            font-size: 14px; 
+            outline: none; 
+            background: transparent; 
+            margin-bottom: 15px; 
+            font-family: inherit; 
+        }
+
+        .btn { 
+            padding: 15px; 
+            border: none; 
+            cursor: pointer; 
+            font-size: 12px; 
+            font-weight: 600; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            transition: 0.3s; 
+            width: 100%; 
+            border-radius: 4px;
+        }
+
         .btn-main { background: var(--accent); color: #fff; }
-        .btn-sub { background: #F8F9FA; color: #666; border: 1px solid #EEE; margin-bottom: 20px; }
+        .btn-main:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-sub { background: #F8F9FA; color: #666; border: 1px solid #EEE; margin-bottom: 15px; }
+
+        /* 待分类区域样式 */
+        #staging-area { 
+            background: #fdfdfd; 
+            border: 1px dashed var(--gold); 
+            border-radius: 4px; 
+            margin-bottom: 20px; 
+            max-height: 250px; 
+            overflow-y: auto; 
+        }
+        .staging-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 10px; 
+            border-bottom: 1px solid #f5f5f5; 
+            font-size: 13px;
+        }
+
+        /* 已选标签样式 */
+        #my-requests { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+        .request-tag { 
+            font-size: 11px; 
+            padding: 4px 10px; 
+            border: 1px solid var(--gold); 
+            color: var(--gold); 
+            border-radius: 20px; 
+            cursor: pointer; 
+            background: #fff;
+        }
+        .request-tag:hover { background: #fff5e6; }
+
+        /* 结果预览样式 */
         #web-preview { display: none; width: 100%; margin-top: 40px; }
-        .song-row { display: grid; grid-template-columns: 35px 85px 1fr 60px; padding: 15px 0; border-bottom: 1px solid #F5F5F5; font-size: 14px; align-items: center; }
-        .request-tag { display: inline-block; font-size: 10px; padding: 3px 8px; border: 1px solid var(--gold); color: var(--gold); border-radius: 20px; margin: 5px; cursor: pointer; }
-        #poster-wrap { position: absolute; left: -9999px; width: 600px; background: #FFF; padding: 80px 60px; border: 1px solid #EEE; }
-        .p-item { display: grid; grid-template-columns: 100px 1fr 60px; padding: 18px 0; border-bottom: 1px solid #F9F7F0; }
+        .song-row { 
+            display: grid; 
+            grid-template-columns: 35px 85px 1fr 60px; 
+            padding: 12px 0; 
+            border-bottom: 1px solid #F5F5F5; 
+            font-size: 14px; 
+            align-items: center; 
+        }
+
+        /* 隐藏的海报容器 */
+        #poster-wrap { 
+            position: absolute; 
+            left: -9999px; 
+            width: 600px; 
+            background: #FFF; 
+            padding: 60px; 
+        }
+        .p-item { 
+            display: grid; 
+            grid-template-columns: 100px 1fr 60px; 
+            padding: 15px 0; 
+            border-bottom: 1px solid #F9F7F0; 
+        }
+        .p-type { color: var(--gold); font-weight: bold; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -34,46 +149,61 @@
         <span class="section-label">1. Authentication</span>
         <button class="btn btn-sub" id="l-btn" onclick="startLogin()">Login with NetEase</button>
         <div id="qr-view" style="text-align:center; display:none; margin-bottom:20px;">
-            <img id="qr-img" style="width:150px; border:1px solid #eee;">
-            <div style="font-size:12px; color:var(--gold); margin-top:10px;">Waiting for scan...</div>
+            <img id="qr-img" style="width:150px; border:1px solid #eee; padding:5px;">
+            <div style="font-size:12px; color:var(--gold); margin-top:10px;">请打开网易云音乐App扫码</div>
         </div>
 
-        <span class="section-label">2. Request (Optional)</span>
-        <div style="display:flex; gap:10px; margin-bottom:15px;">
-            <input type="text" id="search-in" placeholder="Song or artist..." style="margin:0">
-            <button onclick="searchSong()" style="width:80px; background:#000; color:#fff; border:none; cursor:pointer;">Search</button>
+        <span class="section-label">2. Source: Search or Import</span>
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <input type="text" id="search-in" placeholder="搜索歌曲或歌手..." style="margin:0">
+            <button onclick="searchSong()" style="width:80px; background:#333; color:#fff; border:none; border-radius:4px; cursor:pointer;">搜索</button>
         </div>
-        <div id="search-results" style="max-height:150px; overflow-y:auto; font-size:13px; background:#fafafa;"></div>
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <input type="text" id="import-url" placeholder="粘贴歌单链接或ID..." style="margin:0">
+            <button onclick="importPlaylist()" style="width:80px; background:var(--gold); color:#fff; border:none; border-radius:4px; cursor:pointer;">导入</button>
+        </div>
+
+        <!-- 待分类处理区 -->
+        <div id="staging-area" style="display:none;">
+            <div style="padding:10px; font-size:11px; color:#999; background:#fafafa;">待标注歌曲 (请选择舞种):</div>
+            <div id="staging-list"></div>
+        </div>
+
+        <!-- 已标注池 -->
         <div id="my-requests"></div>
 
         <span class="section-label">3. Configuration</span>
-        <textarea id="ids" rows="1" placeholder="Playlist links (optional)..."></textarea>
-        <input type="number" id="duration" placeholder="Duration (mins), e.g. 120">
+        <input type="number" id="duration" placeholder="期望总时长 (分钟)，例如 120">
         <button class="btn btn-main" id="g-btn" onclick="generate()" disabled>Generate Playlist</button>
         <div id="msg" style="text-align:center; font-size:12px; margin-top:20px; color:#999; line-height:1.6;"></div>
     </div>
 
+    <!-- 网页预览 -->
     <div id="web-preview">
         <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid var(--accent); padding-bottom:10px; margin-bottom:20px;">
-            <h2 style="margin:0; font-family:'Playfair Display';">Setlist</h2>
+            <h2 style="margin:0; font-family:'Playfair Display'; color:var(--accent);">Setlist</h2>
             <button onclick="downloadPoster()" style="background:none; border:none; color:var(--gold); font-weight:bold; cursor:pointer; font-size:12px;">[ DOWNLOAD POSTER ]</button>
         </div>
         <div id="preview-list"></div>
     </div>
 </div>
 
+<!-- 用于生成图片的隐藏层 -->
 <div id="poster-wrap">
     <div style="font-family:'Playfair Display'; font-size:50px; text-align:center; color:var(--accent);">Setlist</div>
-    <div id="p-date" style="text-align:center; font-size:12px; letter-spacing:5px; color:var(--gold); margin-bottom:60px;">CURATED DANCE SESSION</div>
+    <div id="p-date" style="text-align:center; font-size:12px; letter-spacing:5px; color:var(--gold); margin-bottom:50px;">CURATED DANCE SESSION</div>
     <div id="p-container"></div>
-    <div style="margin-top:70px; display:flex; justify-content:space-between; align-items:flex-end;">
-        <div><div style="font-size:10px; color:#BBB;">TOTAL DURATION</div><div id="p-total" style="font-size:24px; font-family:'Playfair Display'; color:var(--accent);">00:00</div></div>
+    <div style="margin-top:60px; display:flex; justify-content:space-between; align-items:flex-end;">
+        <div>
+            <div style="font-size:10px; color:#BBB;">TOTAL DURATION</div>
+            <div id="p-total" style="font-size:24px; font-family:'Playfair Display'; color:var(--accent);">00:00</div>
+        </div>
         <div style="font-size:10px; color:#FFF; background:var(--accent); padding:8px 15px;">DANCE MUSIC TOOL</div>
     </div>
 </div>
 
 <script>
-    let timer = null, reqSongs = [], userCookie = "";
+    let timer = null, reqSongs = [], stagedSongs = [], userCookie = "";
     const styles = ["慢三", "平四", "伦巴", "并四", "快三", "慢四", "吉特巴"];
 
     function fmtTime(ms) {
@@ -82,113 +212,212 @@
         return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
     }
 
+    // --- 登录逻辑 ---
     async function startLogin() {
         const box = document.getElementById('qr-view'), img = document.getElementById('qr-img'), btn = document.getElementById('l-btn');
         box.style.display = 'block'; btn.disabled = true;
-        const { data: { unikey } } = await (await fetch('/api/login/key')).json();
-        const { data: { qrimg } } = await (await fetch(`/api/login/create?key=${unikey}`)).json();
-        img.src = qrimg;
-        timer = setInterval(async () => {
-            const res = await (await fetch(`/api/login/check?key=${unikey}`)).json();
-            if (res.code === 803) {
-                clearInterval(timer);
-                userCookie = res.cookie;
-                document.getElementById('g-btn').disabled = false;
-                document.getElementById('g-btn').innerText = 'Ready to Generate';
-                box.style.display = 'none';
-                btn.innerText = 'Authenticated';
-            }
-        }, 3000);
+        try {
+            const res1 = await fetch('/api/login/key');
+            const { data: { unikey } } = await res1.json();
+            const res2 = await fetch(`/api/login/create?key=${unikey}`);
+            const { data: { qrimg } } = await res2.json();
+            img.src = qrimg;
+
+            timer = setInterval(async () => {
+                const res3 = await fetch(`/api/login/check?key=${unikey}`);
+                const res = await res3.json();
+                if (res.code === 803) {
+                    clearInterval(timer);
+                    userCookie = res.cookie;
+                    document.getElementById('g-btn').disabled = false;
+                    document.getElementById('g-btn').innerText = 'Ready to Generate';
+                    box.style.display = 'none';
+                    btn.innerText = 'Authenticated';
+                    btn.style.color = 'green';
+                }
+            }, 3000);
+        } catch (e) {
+            alert('获取登录二维码失败，请刷新重试');
+        }
     }
 
+    // --- 导入逻辑 ---
+    async function importPlaylist() {
+        const url = document.getElementById('import-url').value;
+        if(!url) return alert('请输入链接或ID');
+        document.getElementById('staging-area').style.display = 'block';
+        document.getElementById('staging-list').innerHTML = '<div style="padding:20px; font-size:12px;">加载中...</div>';
+        
+        try {
+            const res = await fetch(`/api/playlist/info?id=${encodeURIComponent(url)}&cookie=${userCookie}`);
+            const data = await res.json();
+            if(data.success) {
+                stagedSongs = data.songs;
+                renderStaging();
+            } else {
+                alert('导入失败：' + data.message);
+            }
+        } catch(e) {
+            alert('接口连接失败');
+        }
+    }
+
+    // --- 搜索逻辑 ---
     async function searchSong() {
         const kw = document.getElementById('search-in').value;
         if(!kw) return;
-        const res = await (await fetch(`/api/search?keywords=${kw}`)).json();
-        document.getElementById('search-results').innerHTML = res.data.map(s => `
-            <div style="display:flex;justify-content:space-between;padding:10px;border-bottom:1px solid #eee;">
-                <span>${s.name} - ${s.ar[0].name}</span>
-                <select style="width:80px;margin:0;font-size:12px;" onchange="addReq(${s.id}, '${s.name.replace(/'/g,"")}', '${s.ar[0].name.replace(/'/g,"")}', ${s.dt||s.duration}, this)">
-                    <option value="">+ Add</option>
+        document.getElementById('staging-area').style.display = 'block';
+        document.getElementById('staging-list').innerHTML = '<div style="padding:20px; font-size:12px;">搜索中...</div>';
+        
+        try {
+            const res = await fetch(`/api/search?keywords=${encodeURIComponent(kw)}`);
+            const data = await res.json();
+            if(data.success) {
+                // 统一字段名
+                stagedSongs = data.data.map(s => ({
+                    id: s.id,
+                    name: s.name,
+                    ar: s.ar ? s.ar.map(a=>a.name).join('/') : (s.artists ? s.artists.map(a=>a.name).join('/') : "未知歌手"),
+                    dt: s.dt || s.duration
+                }));
+                renderStaging();
+            }
+        } catch(e) { alert('搜索失败'); }
+    }
+
+    // --- 渲染标注区域 ---
+    function renderStaging() {
+        const list = document.getElementById('staging-list');
+        if(stagedSongs.length === 0) {
+            document.getElementById('staging-area').style.display = 'none';
+            return;
+        }
+        list.innerHTML = stagedSongs.map((s, idx) => `
+            <div class="staging-item">
+                <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-right:10px;">
+                    ${s.name} <small style="color:#999">/ ${s.ar}</small>
+                </span>
+                <select style="width:90px; margin:0; font-size:12px; padding:5px 0;" onchange="labelSong(${idx}, this.value)">
+                    <option value="">标注舞种</option>
                     ${styles.map(t => `<option value="${t}">${t}</option>`).join('')}
+                    <option value="SKIP">跳过</option>
                 </select>
             </div>
         `).join('');
     }
 
-    function addReq(id, name, ar, dt, sel) {
-        if(!sel.value) return;
-        reqSongs.push({ id, name, ar, dt, type: sel.value });
-        sel.value = "";
-        updateReqUI();
+    function labelSong(idx, type) {
+        if(!type) return;
+        if(type !== 'SKIP') {
+            const song = stagedSongs[idx];
+            reqSongs.push({ ...song, type: type });
+            updateReqUI();
+        }
+        stagedSongs.splice(idx, 1);
+        renderStaging();
     }
 
     function updateReqUI() {
-        document.getElementById('my-requests').innerHTML = reqSongs.map((s,i) => `
-            <span class="request-tag" onclick="reqSongs.splice(${i},1);updateReqUI()">${s.type}:${s.name} ×</span>
-        `).join('');
+        const container = document.getElementById('my-requests');
+        if(reqSongs.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+        container.innerHTML = `<div style="width:100%; font-size:11px; color:var(--gold); margin-bottom:8px;">已选择 (${reqSongs.length}首):</div>` + 
+            reqSongs.map((s, i) => `
+                <span class="request-tag" onclick="reqSongs.splice(${i},1);updateReqUI()">
+                    ${s.type}: ${s.name} ×
+                </span>
+            `).join('');
     }
 
+    // --- 生成逻辑 ---
     async function generate() {
         const btn = document.getElementById('g-btn'), msg = document.getElementById('msg'), dur = document.getElementById('duration').value;
-        if(!dur) return alert('请填写时长');
-        btn.disabled = true; 
-        msg.innerText = '正在生成舞曲序列并创建歌单...';
+        if(!dur) return alert('请填写期望的总时长');
         
+        btn.disabled = true;
+        msg.innerHTML = '<span style="color:var(--gold)">正在编排舞曲并创建网易云歌单...</span>';
+
         try {
-            const res = await fetch('/api/generate', { // 修改路径为 /api/generate
+            const res = await fetch('/api/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    playlistIds: document.getElementById('ids').value.split(/[\n,，;]/).filter(i=>i.trim()),
                     duration: parseInt(dur), 
                     cookie: userCookie,
                     requestedSongs: reqSongs
                 })
             });
-    
+
             const data = await res.json();
             if(data.success) {
                 renderAll(data.songs);
-                // 逻辑合并，不需要再调用 /api/sync
-                msg.innerHTML = `<span style="color:green">✅ 成功！歌单已创建并同步至网易云 (ID: ${data.playlistId})</span>`;
+                msg.innerHTML = `<span style="color:green">✅ 生成成功！歌单已同步至您的网易云账号。</span>`;
             } else {
-                throw new Error(data.message);
+                alert('生成失败：' + data.message);
+                btn.disabled = false;
             }
-        } catch(e) { 
-            msg.innerHTML = `<span style="color:red">❌ 失败：${e.message}</span>`; 
-        } finally {
+        } catch(e) {
+            msg.innerHTML = '<span style="color:red">❌ 网络错误，请重试</span>';
             btn.disabled = false;
         }
-    }
-
-    function downloadPoster() {
-        // 增加 useCORS 防止图片跨域导致无法生成海报
-        html2canvas(document.getElementById('poster-wrap'), { 
-            scale: 2, 
-            backgroundColor: '#fff',
-            useCORS: true 
-        }).then(c => {
-            const l = document.createElement('a'); 
-            l.download = `Setlist_${Date.now()}.png`; 
-            l.href = c.toDataURL(); 
-            l.click();
-        });
     }
 
     function renderAll(songs) {
         const web = document.getElementById('preview-list'), p = document.getElementById('p-container');
         web.innerHTML = ''; p.innerHTML = '';
         let total = 0;
+
         songs.forEach((s, i) => {
             total += (s.dt || 0);
             const t = fmtTime(s.dt);
-            web.innerHTML += `<div class="song-row"><span>${(i+1).toString().padStart(2,'0')}</span><span style="color:var(--gold);font-weight:bold">${s.type}</span><span>${s.name} <small style="color:#999">/ ${s.ar}</small></span><span style="text-align:right;color:#ccc">${t}</span></div>`;
-            p.innerHTML += `<div class="p-item"><div class="p-type">${s.type}</div><div><div style="font-weight:600">${s.name}</div><div style="font-size:12px;color:#999">${s.ar}</div></div><div style="text-align:right;font-size:12px;color:#bbb">${t}</div></div>`;
+            const artistDisp = s.ar || "未知歌手";
+
+            // 网页列表展示
+            web.innerHTML += `
+                <div class="song-row">
+                    <span>${(i+1).toString().padStart(2,'0')}</span>
+                    <span style="color:var(--gold);font-weight:bold">${s.type}</span>
+                    <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${s.name} <small style="color:#999">/ ${artistDisp}</small>
+                    </span>
+                    <span style="text-align:right;color:#ccc">${t}</span>
+                </div>`;
+            
+            // 海报展示内容
+            p.innerHTML += `
+                <div class="p-item">
+                    <div class="p-type">${s.type}</div>
+                    <div style="overflow:hidden;">
+                        <div style="font-weight:600; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
+                        <div style="font-size:12px; color:#999;">${artistDisp}</div>
+                    </div>
+                    <div style="text-align:right; font-size:12px; color:#bbb">${t}</div>
+                </div>`;
         });
+
         document.getElementById('p-total').innerText = fmtTime(total);
         document.getElementById('web-preview').style.display = 'block';
-        window.scrollTo({ top: document.getElementById('web-preview').offsetTop, behavior: 'smooth' });
+        document.getElementById('p-date').innerText = `CURATED SESSION - ${new Date().toLocaleDateString()}`;
+        
+        window.scrollTo({ top: document.getElementById('web-preview').offsetTop - 20, behavior: 'smooth' });
+    }
+
+    function downloadPoster() {
+        const wrap = document.getElementById('poster-wrap');
+        // 使用 html2canvas 转换隐藏的 div 为图片
+        html2canvas(wrap, { 
+            scale: 2, 
+            backgroundColor: '#fff',
+            useCORS: true,
+            logging: false
+        }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = `Dance_Setlist_${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
     }
 </script>
 </body>

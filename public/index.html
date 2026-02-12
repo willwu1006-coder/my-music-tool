@@ -3,333 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dance Music Tool Pro</title>
-    <!-- 引入生成海报所需的库 -->
+    <title>Dance Music Tool V3</title>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;600&display=swap');
+        /* 保持原有的变量，增加表格对齐样式 */
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;600&family=JetBrains+Mono&display=swap');
+        :root { --accent: #1A3A5F; --gold: #C5A059; --bg: #FDFCF8; }
+        body { background: var(--bg); color: #333; font-family: 'Inter', sans-serif; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 650px; }
+        .card { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #f0ead6; margin-bottom: 20px; }
+        .section-label { font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         
-        :root { 
-            --accent: #1A3A5F; 
-            --gold: #C5A059; 
-            --bg: #FDFCF8; 
-            --card-bg: #FFFFFF;
-        }
-
-        body { 
-            background: var(--bg); 
-            color: #333; 
-            font-family: 'Inter', sans-serif; 
-            margin: 0; 
-            padding: 40px 20px; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-        }
-
-        .container { width: 100%; max-width: 600px; }
-        header { text-align: center; margin-bottom: 40px; }
-        h1 { font-family: 'Playfair Display', serif; font-size: 36px; color: var(--accent); margin: 0; }
-        
-        .card { 
-            background: var(--card-bg); 
-            padding: 30px; 
-            border-radius: 8px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
-            border: 1px solid #f0ead6; 
-            margin-bottom: 25px; 
-        }
-
-        .section-label { 
-            font-size: 11px; 
-            font-weight: 700; 
-            color: var(--gold); 
-            text-transform: uppercase; 
-            letter-spacing: 2px; 
-            margin-bottom: 15px; 
-            display: block; 
-            border-bottom: 1px solid #f0ead6; 
-            padding-bottom: 5px; 
-        }
-
-        input, select { 
-            width: 100%; 
-            border: none; 
-            border-bottom: 1px solid #eee; 
-            padding: 12px 0; 
-            font-size: 14px; 
-            outline: none; 
-            background: transparent; 
-            margin-bottom: 15px; 
-            font-family: inherit; 
-        }
-
-        .btn { 
-            padding: 15px; 
-            border: none; 
-            cursor: pointer; 
-            font-size: 12px; 
-            font-weight: 600; 
-            text-transform: uppercase; 
-            letter-spacing: 1px; 
-            transition: 0.3s; 
-            width: 100%; 
-            border-radius: 4px;
-        }
-
-        .btn-main { background: var(--accent); color: #fff; }
-        .btn-main:disabled { background: #ccc; cursor: not-allowed; }
-        .btn-sub { background: #F8F9FA; color: #666; border: 1px solid #EEE; margin-bottom: 15px; }
-
-        /* 待分类区域样式 */
-        #staging-area { 
-            background: #fdfdfd; 
-            border: 1px dashed var(--gold); 
-            border-radius: 4px; 
-            margin-bottom: 20px; 
-            max-height: 250px; 
-            overflow-y: auto; 
-        }
-        .staging-item { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 10px; 
-            border-bottom: 1px solid #f5f5f5; 
-            font-size: 13px;
-        }
-
-        /* 已选标签样式 */
-        #my-requests { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-        .request-tag { 
-            font-size: 11px; 
-            padding: 4px 10px; 
-            border: 1px solid var(--gold); 
-            color: var(--gold); 
-            border-radius: 20px; 
-            cursor: pointer; 
-            background: #fff;
-        }
-        .request-tag:hover { background: #fff5e6; }
-
-        /* 结果预览样式 */
-        #web-preview { display: none; width: 100%; margin-top: 40px; }
+        /* 重点：对齐的列表样式 */
         .song-row { 
             display: grid; 
-            grid-template-columns: 35px 85px 1fr 60px; 
+            grid-template-columns: 40px 80px 1fr 150px 70px; /* 固定列宽 */
+            gap: 10px;
             padding: 12px 0; 
             border-bottom: 1px solid #F5F5F5; 
-            font-size: 14px; 
-            align-items: center; 
+            font-size: 13px; 
+            align-items: center;
         }
-
-        /* 隐藏的海报容器 */
-        #poster-wrap { 
-            position: absolute; 
-            left: -9999px; 
-            width: 600px; 
-            background: #FFF; 
-            padding: 60px; 
-        }
-        .p-item { 
-            display: grid; 
-            grid-template-columns: 100px 1fr 60px; 
-            padding: 15px 0; 
-            border-bottom: 1px solid #F9F7F0; 
-        }
-        .p-type { color: var(--gold); font-weight: bold; font-size: 14px; }
+        .song-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mono { font-family: 'JetBrains Mono', monospace; color: #888; }
+        
+        input, select { width: 100%; border: none; border-bottom: 1px solid #eee; padding: 10px 0; margin-bottom: 15px; outline: none; }
+        .btn { padding: 12px; border: none; cursor: pointer; border-radius: 4px; font-weight: 600; width: 100%; margin-bottom: 10px; }
+        .btn-main { background: var(--accent); color: #fff; }
+        .btn-sub { background: #f8f9fa; border: 1px solid #eee; color: #666; }
+        
+        .auth-box { display: flex; gap: 10px; margin-bottom: 15px; }
+        .switch-container { display: flex; align-items: center; gap: 10px; font-size: 13px; margin-bottom: 15px; color: #666; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header><h1>Dance Music Tool</h1></header>
+    <header style="text-align:center; margin-bottom:30px;">
+        <h1 style="font-family:'Playfair Display'; color:var(--accent);">Dance Tool Pro</h1>
+        <div id="user-status" style="font-size: 12px; color: var(--gold); margin-top: 5px;">未登录网站账号</div>
+    </header>
 
-    <div class="card">
-        <span class="section-label">1. Authentication</span>
-        <button class="btn btn-sub" id="l-btn" onclick="startLogin()">Login with NetEase</button>
-        <div id="qr-view" style="text-align:center; display:none; margin-bottom:20px;">
-            <img id="qr-img" style="width:150px; border:1px solid #eee; padding:5px;">
-            <div style="font-size:12px; color:var(--gold); margin-top:10px;">请打开网易云音乐App扫码</div>
+    <!-- 1. 网站账号系统 -->
+    <div class="card" id="auth-section">
+        <span class="section-label">1. Account System</span>
+        <div class="auth-box">
+            <input type="text" id="u-name" placeholder="用户名" style="margin:0">
+            <input type="password" id="u-pass" placeholder="密码" style="margin:0">
         </div>
-        <div style="margin-top:10px;">
-            <details>
-                <summary style="font-size:12px; color:#999; cursor:pointer;">扫码失败？手动粘贴 Cookie</summary>
-                <textarea id="manual-cookie" placeholder="在此粘贴网易云 MUSIC_U Cookie..." style="height:60px; margin-top:5px; font-size:11px;"></textarea>
-                <button class="btn btn-sub" onclick="setManualCookie()" style="padding:8px; font-size:11px;">确认使用手动 Cookie</button>
-            </details>
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-sub" onclick="handleAuth('login')">登录账号</button>
+            <button class="btn btn-sub" onclick="handleAuth('register')">注册账号</button>
+        </div>
+    </div>
+
+    <!-- 2. 网易云登录 (仅在需要更新Cookie时显示) -->
+    <div class="card">
+        <span class="section-label">2. NetEase Connectivity</span>
+        <button class="btn btn-sub" id="l-btn" onclick="startLogin()">网易云扫码登录</button>
+        <div id="qr-view" style="text-align:center; display:none; padding:10px;">
+            <img id="qr-img" style="width:130px; border:1px solid #eee;">
+        </div>
+        <details style="margin-top:10px; font-size:12px; color:#999;">
+            <summary>手动粘贴 Cookie</summary>
+            <textarea id="manual-cookie" style="width:100%; height:50px; margin-top:5px;"></textarea>
+            <button onclick="setManualCookie()" style="font-size:10px;">确认</button>
+        </details>
+    </div>
+
+    <!-- 3. 操作区 -->
+    <div class="card">
+        <span class="section-label">3. Selection & Arrange</span>
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="import-url" placeholder="粘贴歌单链接或ID..." style="margin:0">
+            <button onclick="importPlaylist()" style="width:80px; background:var(--gold); border:none; color:#fff; cursor:pointer;">导入</button>
         </div>
         
-
-        <span class="section-label">2. Source: Search or Import</span>
-        <div style="display:flex; gap:10px; margin-bottom:10px;">
-            <input type="text" id="search-in" placeholder="搜索歌曲或歌手..." style="margin:0">
-            <button onclick="searchSong()" style="width:80px; background:#333; color:#fff; border:none; border-radius:4px; cursor:pointer;">搜索</button>
-        </div>
-        <div style="display:flex; gap:10px; margin-bottom:15px;">
-            <input type="text" id="import-url" placeholder="粘贴歌单链接或ID..." style="margin:0">
-            <button onclick="importPlaylist()" style="width:80px; background:var(--gold); color:#fff; border:none; border-radius:4px; cursor:pointer;">导入</button>
-        </div>
-
-        <!-- 待分类处理区 -->
-        <div id="staging-area" style="display:none;">
-            <div style="padding:10px; font-size:11px; color:#999; background:#fafafa;">待标注歌曲 (请选择舞种):</div>
+        <div id="staging-area" style="display:none; margin: 15px 0; border:1px dashed #ddd; max-height:200px; overflow-y:auto;">
             <div id="staging-list"></div>
         </div>
 
-        <!-- 已标注池 -->
-        <div id="my-requests"></div>
+        <div id="my-requests" style="display:flex; flex-wrap:wrap; gap:5px; margin:15px 0;"></div>
 
-        <span class="section-label">3. Configuration</span>
-        <input type="number" id="duration" placeholder="期望总时长 (分钟)，例如 120">
-        <button class="btn btn-main" id="g-btn" onclick="generate()" disabled>Generate Playlist</button>
-        <div id="msg" style="text-align:center; font-size:12px; margin-top:20px; color:#999; line-height:1.6;"></div>
+        <div class="switch-container">
+            <input type="checkbox" id="fill-toggle" checked style="width:auto; margin:0;">
+            <label for="fill-toggle">时长不足时，使用默认库自动补全</label>
+        </div>
+
+        <input type="number" id="duration" placeholder="目标总时长 (分钟)">
+        <button class="btn btn-main" id="g-btn" onclick="generate()">开始编排并同步歌单</button>
+        <div id="msg" style="font-size:12px; text-align:center; color:#999;"></div>
     </div>
 
-    <!-- 网页预览 -->
-    <div id="web-preview">
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid var(--accent); padding-bottom:10px; margin-bottom:20px;">
-            <h2 style="margin:0; font-family:'Playfair Display'; color:var(--accent);">Setlist</h2>
-            <button onclick="downloadPoster()" style="background:none; border:none; color:var(--gold); font-weight:bold; cursor:pointer; font-size:12px;">[ DOWNLOAD POSTER ]</button>
+    <!-- 4. 预览区 -->
+    <div id="web-preview" style="display:none;">
+        <div style="border-bottom:2px solid var(--accent); padding-bottom:5px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0; font-family:'Playfair Display';">Sequence Preview</h3>
+            <button onclick="downloadPoster()" style="font-size:11px; background:none; border:1px solid var(--gold); color:var(--gold); cursor:pointer; padding:2px 8px;">下载海报</button>
         </div>
         <div id="preview-list"></div>
     </div>
 </div>
 
-<!-- 用于生成图片的隐藏层 -->
-<div id="poster-wrap">
-    <div style="font-family:'Playfair Display'; font-size:50px; text-align:center; color:var(--accent);">Setlist</div>
-    <div id="p-date" style="text-align:center; font-size:12px; letter-spacing:5px; color:var(--gold); margin-bottom:50px;">CURATED DANCE SESSION</div>
+<!-- 海报容器 (隐藏) -->
+<div id="poster-wrap" style="position:absolute; left:-9999px; width:600px; background:#fff; padding:50px;">
+    <h1 style="text-align:center; font-family:'Playfair Display'; font-size:40px; color:var(--accent); margin:0;">Setlist</h1>
+    <p id="p-date" style="text-align:center; color:var(--gold); letter-spacing:3px; font-size:12px; margin-bottom:40px;"></p>
     <div id="p-container"></div>
-    <div style="margin-top:60px; display:flex; justify-content:space-between; align-items:flex-end;">
-        <div>
-            <div style="font-size:10px; color:#BBB;">TOTAL DURATION</div>
-            <div id="p-total" style="font-size:24px; font-family:'Playfair Display'; color:var(--accent);">00:00</div>
-        </div>
-        <div style="font-size:10px; color:#FFF; background:var(--accent); padding:8px 15px;">DANCE MUSIC TOOL</div>
-    </div>
 </div>
 
 <script>
-    let timer = null, reqSongs = [], stagedSongs = [], userCookie = "";
+    let userCookie = "", currentUsername = "", stagedSongs = [], reqSongs = [];
     const styles = ["慢三", "平四", "伦巴", "并四", "快三", "慢四", "吉特巴"];
 
-    function fmtTime(ms) {
-        if(!ms || isNaN(ms)) return "0:00";
-        const s = Math.floor(ms / 1000);
-        return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
-    }
-    
-    function setManualCookie() {
-        let ck = document.getElementById('manual-cookie').value.trim();
-        if(!ck) return alert('请输入 Cookie');
-    
-        // 情况 A：如果你粘贴的是整段 document.cookie (推荐)
-        // 包含 MUSIC_U=xxx; __csrf=xxx; 的格式，直接使用即可
-        if (ck.includes('MUSIC_U=')) {
-            userCookie = ck;
-        } 
-        // 情况 B：如果你只粘贴了 MUSIC_U 的那一串 xxx 值
-        else {
-            // 我们帮它补齐格式。注意：这样可能缺少 __csrf，导致创建歌单失败
-            userCookie = `MUSIC_U=${ck};`; 
-            console.warn('检测到简易模式 Cookie，如果创建歌单失败，请粘贴完整 document.cookie');
-        }
-    
-        document.getElementById('g-btn').disabled = false;
-        document.getElementById('g-btn').innerText = 'Ready (Using Manual Cookie)';
-        document.getElementById('l-btn').innerText = 'Authenticated (Manual)';
-        document.getElementById('l-btn').style.color = 'green';
-        alert('Cookie 设置成功！');
-    }
-
-    // --- 登录逻辑 ---
-    async function startLogin() {
-        const box = document.getElementById('qr-view'), img = document.getElementById('qr-img'), btn = document.getElementById('l-btn');
-        box.style.display = 'block'; btn.disabled = true;
-        try {
-            const res1 = await fetch('/api/login/key');
-            const { data: { unikey } } = await res1.json();
-            const res2 = await fetch(`/api/login/create?key=${unikey}`);
-            const { data: { qrimg } } = await res2.json();
-            img.src = qrimg;
-
-            timer = setInterval(async () => {
-                const res3 = await fetch(`/api/login/check?key=${unikey}`);
-                const res = await res3.json();
-                if (res.code === 803) {
-                    clearInterval(timer);
-                    userCookie = res.cookie;
-                    document.getElementById('g-btn').disabled = false;
-                    document.getElementById('g-btn').innerText = 'Ready to Generate';
-                    box.style.display = 'none';
-                    btn.innerText = 'Authenticated';
-                    btn.style.color = 'green';
-                }
-            }, 3000);
-        } catch (e) {
-            alert('获取登录二维码失败，请刷新重试');
-        }
-    }
-
-    // --- 导入逻辑 ---
-    async function importPlaylist() {
-        const url = document.getElementById('import-url').value;
-        if(!url) return alert('请输入链接或ID');
-        document.getElementById('staging-area').style.display = 'block';
-        document.getElementById('staging-list').innerHTML = '<div style="padding:20px; font-size:12px;">加载中...</div>';
+    // --- 账号系统 ---
+    async function handleAuth(type) {
+        const username = document.getElementById('u-name').value;
+        const password = document.getElementById('u-pass').value;
+        if(!username || !password) return alert('填写账号密码');
         
-        try {
-            const res = await fetch(`/api/playlist/info?id=${encodeURIComponent(url)}&cookie=${userCookie}`);
-            const data = await res.json();
-            if(data.success) {
-                stagedSongs = data.songs;
-                renderStaging();
+        const res = await fetch(`/api/auth/${type}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        
+        if(data.success) {
+            if(type === 'login') {
+                currentUsername = username;
+                userCookie = data.neteaseCookie;
+                document.getElementById('user-status').innerText = `已登录账号: ${username}`;
+                document.getElementById('auth-section').style.display = 'none';
+                if(userCookie) document.getElementById('l-btn').innerText = '网易云已连接 (从账号加载)';
             } else {
-                alert('导入失败：' + data.message);
+                alert('注册成功，现在请登录');
             }
-        } catch(e) {
-            alert('接口连接失败');
+        } else {
+            alert(data.message);
         }
     }
 
-    // --- 搜索逻辑 ---
-    async function searchSong() {
-        const kw = document.getElementById('search-in').value;
-        if(!kw) return;
-        document.getElementById('staging-area').style.display = 'block';
-        document.getElementById('staging-list').innerHTML = '<div style="padding:20px; font-size:12px;">搜索中...</div>';
+    // --- 网易云登录 & Cookie 更新 ---
+    async function startLogin() {
+        const box = document.getElementById('qr-view'), img = document.getElementById('qr-img');
+        box.style.display = 'block';
+        const { data: { unikey } } = await (await fetch('/api/login/key')).json();
+        const { data: { qrimg } } = await (await fetch(`/api/login/create?key=${unikey}`)).json();
+        img.src = qrimg;
         
-        try {
-            const res = await fetch(`/api/search?keywords=${encodeURIComponent(kw)}`);
-            const data = await res.json();
-            if(data.success) {
-                // 统一字段名
-                stagedSongs = data.data.map(s => ({
-                    id: s.id,
-                    name: s.name,
-                    ar: s.ar ? s.ar.map(a=>a.name).join('/') : (s.artists ? s.artists.map(a=>a.name).join('/') : "未知歌手"),
-                    dt: s.dt || s.duration
-                }));
-                renderStaging();
+        const timer = setInterval(async () => {
+            const res = await (await fetch(`/api/login/check?key=${unikey}`)).json();
+            if (res.code === 803) {
+                clearInterval(timer);
+                userCookie = res.cookie;
+                box.style.display = 'none';
+                document.getElementById('l-btn').innerText = '网易云连接成功';
+                // 如果已登录自有账号，同步保存 Cookie
+                if(currentUsername) {
+                    await fetch('/api/auth/update-cookie', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: currentUsername, cookie: userCookie })
+                    });
+                }
             }
-        } catch(e) { alert('搜索失败'); }
+        }, 3000);
     }
 
-    // --- 渲染标注区域 ---
+    function setManualCookie() {
+        userCookie = document.getElementById('manual-cookie').value;
+        alert('Cookie 已设置');
+        if(currentUsername) handleAuth('update-cookie'); // 简写
+    }
+
+    // --- 导入与编排 ---
+    async function importPlaylist() {
+        const id = document.getElementById('import-url').value;
+        const res = await (await fetch(`/api/playlist/info?id=${id}&cookie=${userCookie}`)).json();
+        if(res.success) { stagedSongs = res.songs; renderStaging(); }
+    }
+
     function renderStaging() {
-        const list = document.getElementById('staging-list');
-        if(stagedSongs.length === 0) {
-            document.getElementById('staging-area').style.display = 'none';
-            return;
-        }
+        const area = document.getElementById('staging-area'), list = document.getElementById('staging-list');
+        area.style.display = stagedSongs.length ? 'block' : 'none';
         list.innerHTML = stagedSongs.map((s, idx) => `
-            <div class="staging-item">
-                <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-right:10px;">
-                    ${s.name} <small style="color:#999">/ ${s.ar}</small>
-                </span>
-                <select style="width:90px; margin:0; font-size:12px; padding:5px 0;" onchange="labelSong(${idx}, this.value)">
-                    <option value="">标注舞种</option>
+            <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #eee; font-size:12px;">
+                <span style="flex:1;">${s.name} - ${s.ar}</span>
+                <select onchange="labelSong(${idx}, this.value)" style="width:80px; margin:0; padding:2px;">
+                    <option value="">标注...</option>
                     ${styles.map(t => `<option value="${t}">${t}</option>`).join('')}
                     <option value="SKIP">跳过</option>
                 </select>
@@ -338,10 +200,8 @@
     }
 
     function labelSong(idx, type) {
-        if(!type) return;
-        if(type !== 'SKIP') {
-            const song = stagedSongs[idx];
-            reqSongs.push({ ...song, type: type });
+        if(type && type !== 'SKIP') {
+            reqSongs.push({ ...stagedSongs[idx], type });
             updateReqUI();
         }
         stagedSongs.splice(idx, 1);
@@ -349,105 +209,59 @@
     }
 
     function updateReqUI() {
-        const container = document.getElementById('my-requests');
-        if(reqSongs.length === 0) {
-            container.innerHTML = '';
-            return;
-        }
-        container.innerHTML = `<div style="width:100%; font-size:11px; color:var(--gold); margin-bottom:8px;">已选择 (${reqSongs.length}首):</div>` + 
-            reqSongs.map((s, i) => `
-                <span class="request-tag" onclick="reqSongs.splice(${i},1);updateReqUI()">
-                    ${s.type}: ${s.name} ×
-                </span>
-            `).join('');
+        document.getElementById('my-requests').innerHTML = reqSongs.map((s,i) => `
+            <span style="font-size:11px; padding:3px 8px; background:#eee; border-radius:10px; cursor:pointer;" onclick="reqSongs.splice(${i},1);updateReqUI()">${s.type}:${s.name} ×</span>
+        `).join('');
     }
 
-    // --- 生成逻辑 ---
+    // --- 生成预览 ---
     async function generate() {
-        const btn = document.getElementById('g-btn'), msg = document.getElementById('msg'), dur = document.getElementById('duration').value;
-        if(!dur) return alert('请填写期望的总时长');
+        const dur = document.getElementById('duration').value;
+        const fill = document.getElementById('fill-toggle').checked;
+        const msg = document.getElementById('msg');
+        msg.innerText = '编排中...';
         
-        btn.disabled = true;
-        msg.innerHTML = '<span style="color:var(--gold)">正在编排舞曲并创建网易云歌单...</span>';
-
-        try {
-            const res = await fetch('/api/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    duration: parseInt(dur), 
-                    cookie: userCookie,
-                    requestedSongs: reqSongs
-                })
-            });
-
-            const data = await res.json();
-            if(data.success) {
-                renderAll(data.songs);
-                msg.innerHTML = `<span style="color:green">✅ 生成成功！歌单已同步至您的网易云账号。</span>`;
-            } else {
-                alert('生成失败：' + data.message);
-                btn.disabled = false;
-            }
-        } catch(e) {
-            msg.innerHTML = '<span style="color:red">❌ 网络错误，请重试</span>';
-            btn.disabled = false;
+        const res = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ duration: parseInt(dur), cookie: userCookie, requestedSongs: reqSongs, useDefaultFill: fill })
+        });
+        const data = await res.json();
+        if(data.success) {
+            renderAll(data.songs);
+            msg.innerText = '已同步至网易云歌单！';
         }
     }
 
     function renderAll(songs) {
         const web = document.getElementById('preview-list'), p = document.getElementById('p-container');
         web.innerHTML = ''; p.innerHTML = '';
-        let total = 0;
-
         songs.forEach((s, i) => {
-            total += (s.dt || 0);
-            const t = fmtTime(s.dt);
-            const artistDisp = s.ar || "未知歌手";
-
-            // 网页列表展示
+            const timeStr = Math.floor(s.dt/60000) + ":" + Math.floor((s.dt%60000)/1000).toString().padStart(2,'0');
+            // 网页对齐展示
             web.innerHTML += `
                 <div class="song-row">
-                    <span>${(i+1).toString().padStart(2,'0')}</span>
-                    <span style="color:var(--gold);font-weight:bold">${s.type}</span>
-                    <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                        ${s.name} <small style="color:#999">/ ${artistDisp}</small>
-                    </span>
-                    <span style="text-align:right;color:#ccc">${t}</span>
+                    <span class="mono">${(i+1).toString().padStart(2,'0')}</span>
+                    <span style="color:var(--gold); font-weight:600;">${s.type}</span>
+                    <span style="color:#333; font-weight:500;">${s.name}</span>
+                    <span style="color:#888;">${s.ar}</span>
+                    <span class="mono" style="text-align:right;">${timeStr}</span>
                 </div>`;
-            
-            // 海报展示内容
+            // 海报展示 (简单对齐)
             p.innerHTML += `
-                <div class="p-item">
-                    <div class="p-type">${s.type}</div>
-                    <div style="overflow:hidden;">
-                        <div style="font-weight:600; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
-                        <div style="font-size:12px; color:#999;">${artistDisp}</div>
-                    </div>
-                    <div style="text-align:right; font-size:12px; color:#bbb">${t}</div>
+                <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee; font-size:14px;">
+                    <span style="width:80px; color:var(--gold);">${s.type}</span>
+                    <span style="flex:1;">${s.name} - <small>${s.ar}</small></span>
+                    <span style="width:50px; text-align:right;">${timeStr}</span>
                 </div>`;
         });
-
-        document.getElementById('p-total').innerText = fmtTime(total);
         document.getElementById('web-preview').style.display = 'block';
-        document.getElementById('p-date').innerText = `CURATED SESSION - ${new Date().toLocaleDateString()}`;
-        
-        window.scrollTo({ top: document.getElementById('web-preview').offsetTop - 20, behavior: 'smooth' });
+        document.getElementById('p-date').innerText = new Date().toLocaleDateString();
     }
 
     function downloadPoster() {
-        const wrap = document.getElementById('poster-wrap');
-        // 使用 html2canvas 转换隐藏的 div 为图片
-        html2canvas(wrap, { 
-            scale: 2, 
-            backgroundColor: '#fff',
-            useCORS: true,
-            logging: false
-        }).then(canvas => {
-            const link = document.createElement('a');
-            link.download = `Dance_Setlist_${Date.now()}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
+        html2canvas(document.getElementById('poster-wrap'), { scale: 2 }).then(c => {
+            const l = document.createElement('a'); l.download = 'Setlist.png'; l.href = c.toDataURL(); l.click();
         });
     }
 </script>

@@ -53,30 +53,48 @@ app.get('/api/search', async (req, res) => {
     } catch (e) { res.json({ success: false }); }
 });
 
+const formatArtists = (song) => {
+    const list = song.ar || song.artists || [];
+    return Array.isArray(list) ? list.map(a => a.name).join('/') : "未知歌手";
+};
+
+// 【新增】获取歌单详情接口
+app.get('/api/playlist/info', async (req, res) => {
+    try {
+        let { id, cookie } = req.query;
+        const realId = await getRealId(id); // 复用之前的 ID 解析逻辑
+        if (!realId) return res.json({ success: false, message: '无效的歌单链接或ID' });
+
+        const result = await netease.playlist_track_all({ id: realId, cookie });
+        const songs = (result.body.songs || []).map(s => ({
+            id: s.id,
+            name: s.name,
+            ar: formatArtists(s),
+            dt: s.dt || s.duration
+        }));
+        res.json({ success: true, songs });
+    } catch (e) {
+        res.json({ success: false, message: '获取歌单失败' });
+    }
+});
+
 app.post('/api/generate', async (req, res) => {
     try {
-        let { playlistIds, duration, cookie, requestedSongs = [] } = req.body;
+        let { duration, cookie, requestedSongs = [] } = req.body;
         
-        // 1. 获取底库 ID
-        let baseIds = [];
-        if (!playlistIds || playlistIds.length === 0) {
-            baseIds = DEFAULT_PLAYLISTS.map(p => p.id);
-        } else {
-            baseIds = await Promise.all(playlistIds.map(l => getRealId(l)));
-        }
-
-        // 2. 获取底库数据并洗牌
-        const responses = await Promise.all(baseIds.map(id => id ? netease.playlist_track_all({ id, cookie }) : {body:{songs:[]}}));
-        const baseData = responses.map(r => shuffle([...(r.body.songs || [])]));
-
-        // 3. 整理点歌池
+        // 1. 整理用户标记的歌曲池 (按舞种分类)
         let requestPool = {};
         DEFAULT_PLAYLISTS.forEach(p => requestPool[p.name] = []);
         requestedSongs.forEach(s => {
             if (requestPool[s.type]) requestPool[s.type].push(s);
         });
 
-        // 4. 混合编排
+        // 2. 获取底库数据作为补充 (如果用户标记的歌不够长，用底库填补)
+        const baseIds = DEFAULT_PLAYLISTS.map(p => p.id);
+        const responses = await Promise.all(baseIds.map(id => netease.playlist_track_all({ id, cookie })));
+        const baseData = responses.map(r => shuffle([...(r.body.songs || [])]));
+
+        // 3. 混合编排逻辑
         const targetMs = duration * 60 * 1000;
         let result = [], currentMs = 0, usedIds = new Set();
         let basePointers = new Array(baseData.length).fill(0);
@@ -84,48 +102,49 @@ app.post('/api/generate', async (req, res) => {
 
         while (currentMs < targetMs && hasMore) {
             hasMore = false;
-            // 严格按 0-6 索引循环，对应 7 种舞
             for (let i = 0; i < 7; i++) {
-                // 重点修复：无论底库多长，舞种名称始终取 DEFAULT_PLAYLISTS 的对应项
                 const typeName = DEFAULT_PLAYLISTS[i].name;
                 let song = null;
 
+                // 优先从用户手动标记的池子里取歌
                 if (requestPool[typeName] && requestPool[typeName].length > 0) {
                     song = requestPool[typeName].shift();
                     hasMore = true;
-                } else if (baseData[i] && basePointers[i] < baseData[i].length) {
-                    song = baseData[i][basePointers[i]++];
+                } 
+                // 如果标记的歌用完了，从默认底库抽歌填补空缺
+                else if (baseData[i] && basePointers[i] < baseData[i].length) {
+                    const rawSong = baseData[i][basePointers[i]++];
+                    song = {
+                        id: rawSong.id,
+                        name: rawSong.name,
+                        ar: formatArtists(rawSong),
+                        dt: rawSong.dt || rawSong.duration,
+                        type: typeName
+                    };
                     hasMore = true;
                 }
 
                 if (song && !usedIds.has(song.id)) {
-                    // 重点修复：处理 dt 或 duration 字段
-                    const songDuration = song.dt || song.duration || 0; 
-                    result.push({
-                        id: song.id,
-                        name: song.name,
-                        ar: song.ar ? (Array.isArray(song.ar) ? song.ar.map(a => a.name).join('/') : song.ar) : (song.artists ? song.artists.map(a=>a.name).join('/') : "未知歌手"),
-                        dt: songDuration,
-                        type: typeName
-                    });
+                    result.push(song);
                     usedIds.add(song.id);
-                    currentMs += songDuration;
+                    currentMs += song.dt;
                 }
                 if (currentMs >= targetMs) break;
             }
         }
 
+        // 4. 创建并同步
         const trackIds = result.map(s => s.id).reverse().join(',');
-        const createRes = await netease.playlist_create({ name: `DanceV2_${new Date().toLocaleDateString()}`, cookie });
+        const createRes = await netease.playlist_create({ name: `舞会_${new Date().toLocaleDateString()}`, cookie });
         const newId = createRes.body.id;
-        netease.playlist_tracks({ op: 'add', pid: newId, tracks: trackIds, cookie });
+        await netease.playlist_tracks({ op: 'add', pid: newId, tracks: trackIds, cookie });
         
         res.json({ success: true, count: result.length, playlistId: newId, songs: result });
     } catch (error) {
-        console.error(error);
-        res.json({ success: false, message: '生成失败，请重试' });
+        res.json({ success: false, message: '生成失败' });
     }
 });
+
 
 app.get('/api/login/key', async (req, res) => res.json((await netease.login_qr_key({})).body));
 app.get('/api/login/create', async (req, res) => res.json((await netease.login_qr_create({ key: req.query.key, qrimg: true })).body));

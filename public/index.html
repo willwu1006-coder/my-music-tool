@@ -196,32 +196,42 @@
             <span class="request-tag" onclick="requestedSongs.splice(${i},1);updateReqUI()">${s.type}: ${s.name} ×</span>
         `).join('') : '';
     }
-
     async function generate() {
-        const btn = document.getElementById('g-btn'), msg = document.getElementById('msg'), dur = document.getElementById('duration').value;
-        if(!dur) return alert('Please enter duration');
-        btn.disabled = true; msg.innerText = 'Synthesizing your rhythmic sequence...';
+        const btn = document.getElementById('g-btn');
+        const msg = document.getElementById('msg');
+        const dur = document.getElementById('duration').value;
+        
+        if(!dur) return alert('请输入时长');
+        btn.disabled = true; 
+        msg.innerText = '正在编排舞曲并同步，请不要关闭页面...';
         
         try {
-            const res = await fetch('/api/generate', {
+            const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     playlistIds: document.getElementById('ids').value.split(/[\n,，;]/).filter(i=>i.trim()),
                     duration: parseInt(dur), 
-                    cookie: currentCookie,
+                    cookie: window.cookie || currentCookie,
                     requestedSongs: requestedSongs
                 })
             });
-            const data = await res.json();
+    
+            const data = await response.json();
             if(data.success) {
                 renderAll(data.songs);
-                msg.innerText = 'Synchronized to your cloud library.';
+                msg.innerText = '✅ 生成成功！海报已就绪。';
             } else {
-                msg.innerText = 'Error: ' + data.message;
+                msg.innerText = '❌ 错误：' + data.message;
             }
-        } catch(e) { msg.innerText = 'Network error.'; }
-        btn.disabled = false;
+        } catch(e) { 
+            // 捕获网络错误
+            msg.innerHTML = '<span style="color:red">⚠️ 响应超时，但歌单可能已在网易云生成。请刷新页面或检查 App。</span>';
+            console.error(e);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'GENERATE AGAIN';
+        }
     }
 
     function renderAll(songs) {

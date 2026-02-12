@@ -30,18 +30,33 @@ const DEFAULT_PLAYLISTS = [
 async function getRealId(input) {
     let str = input.trim();
     if (!str) return null;
-    const directMatch = str.match(/id=(\d+)/);
-    if (directMatch) return directMatch[1];
-    if (/^\d+$/.test(str)) return str; // 如果本身就是纯数字 ID
-    
-    const urlMatch = str.match(/https?:\/\/[^\s]+/);
-    if (urlMatch) {
+
+    // 1. 如果输入本来就是纯数字 ID
+    if (/^\d+$/.test(str)) return str;
+
+    // 2. 尝试从字符串中提取 id=xxxx 这种格式 (适配电脑版链接)
+    const idMatch = str.match(/[?&]id=(\d+)/);
+    if (idMatch) return idMatch[1];
+
+    // 3. 尝试从 /playlist/xxxx 这种格式提取 (适配部分手机分享链接)
+    const pathMatch = str.match(/\/playlist\/(\d+)/);
+    if (pathMatch) return pathMatch[1];
+
+    // 4. 处理短链接 (如 https://163cn.tv/xxxx)
+    if (str.startsWith('http')) {
         try {
-            // 增加到 10 秒超时
-            const res = await axios.get(urlMatch[0], { maxRedirects: 5, timeout: 10000 });
-            const finalMatch = (res.request.res.responseUrl || '').match(/id=(\d+)/);
+            // 禁止自动跳转，手动获取 location
+            const res = await axios.get(str, { 
+                maxRedirects: 5, 
+                timeout: 10000,
+                headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/04.1' }
+            });
+            const finalUrl = res.request.res.responseUrl || '';
+            const finalMatch = finalUrl.match(/[?&]id=(\d+)/) || finalUrl.match(/\/playlist\/(\d+)/);
             return finalMatch ? finalMatch[1] : null;
-        } catch (e) { return null; }
+        } catch (e) {
+            return null;
+        }
     }
     return null;
 }
@@ -68,26 +83,42 @@ const formatArtists = (song) => {
     return Array.isArray(list) ? list.map(a => a.name).join('/') : "未知歌手";
 };
 
-// 【新增】获取歌单详情接口
+// 修改获取歌单详情的接口
 app.get('/api/playlist/info', async (req, res) => {
     try {
-        let { id, cookie } = req.query;
-        const realId = await getRealId(id); // 复用之前的 ID 解析逻辑
-        if (!realId) return res.json({ success: false, message: '无效的歌单链接或ID' });
+        const rawInput = req.query.id;
+        if (!rawInput) return res.json({ success: false, message: '请输入链接' });
 
-        const result = await netease.playlist_track_all({ id: realId, cookie });
-        const songs = (result.body.songs || []).map(s => ({
-            id: s.id,
-            name: s.name,
-            ar: formatArtists(s),
-            dt: s.dt || s.duration
-        }));
-        res.json({ success: true, songs });
+        // 重点：调用解析函数提取真实 ID
+        const realId = await getRealId(rawInput);
+        
+        if (!realId) {
+            return res.json({ success: false, message: '无法从链接中识别歌单ID' });
+        }
+
+        const result = await netease.playlist_track_all({ 
+            id: realId, 
+            cookie: req.query.cookie 
+        });
+
+        if (result.body.code !== 200) {
+            return res.json({ success: false, message: '网易云返回错误: ' + result.body.code });
+        }
+
+        res.json({ 
+            success: true, 
+            songs: result.body.songs.map(s => ({ 
+                id: s.id, 
+                name: s.name, 
+                ar: formatArtists(s), 
+                dt: s.dt || s.duration 
+            })) 
+        });
     } catch (e) {
-        res.json({ success: false, message: '获取歌单失败' });
+        console.error('导入报错:', e);
+        res.json({ success: false, message: '解析失败，请检查歌单是否为公开' });
     }
 });
-
 // --- 1. 自有账号系统接口 ---
 
 app.post('/api/auth/register', async (req, res) => {

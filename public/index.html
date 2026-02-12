@@ -212,13 +212,31 @@
         stagedSongs = res.data.map(s => ({ id: s.id, name: s.name, ar: s.ar ? s.ar.map(a=>a.name).join('/') : "未知", dt: s.dt || s.duration }));
         renderStaging();
     }
-
+    
     async function importPlaylist() {
-        const id = document.getElementById('import-url').value;
+        const urlInput = document.getElementById('import-url').value.trim();
+        if(!urlInput) return alert('请输入歌单链接或ID');
         if(!userCookie) return alert('请先连接网易云');
-        const res = await (await fetch(`/api/playlist/info?id=${id}&cookie=${userCookie}`)).json();
-        if(res.success) { stagedSongs = res.songs; renderStaging(); }
-        else alert('导入失败，请检查歌单ID');
+
+        document.getElementById('staging-area').style.display = 'block';
+        document.getElementById('staging-list').innerHTML = '<div style="padding:10px; font-size:12px; color:var(--gold);">解析中，请稍候...</div>';
+
+        try {
+            // 使用 encodeURIComponent 包装整个 URL 字符串
+            const res = await fetch(`/api/playlist/info?id=${encodeURIComponent(urlInput)}&cookie=${encodeURIComponent(userCookie)}`);
+            const data = await res.json();
+            
+            if(data.success) { 
+                stagedSongs = data.songs; 
+                renderStaging(); 
+            } else { 
+                alert('导入失败：' + data.message);
+                document.getElementById('staging-area').style.display = 'none';
+            }
+        } catch(e) { 
+            alert('服务器连接失败');
+            document.getElementById('staging-area').style.display = 'none';
+        }
     }
 
     function renderStaging() {

@@ -69,15 +69,22 @@
         </details>
     </div>
 
-    <!-- 3. 数据源 -->
+<!-- 3. 数据源 -->
     <div class="card">
         <span class="section-label">2. Select Music</span>
+        
+        <!-- 新增提示文字 -->
+        <p style="font-size: 12px; color: #999; margin-top: -5px; margin-bottom: 15px; line-height: 1.6;">
+            <span style="color: var(--gold); font-weight: 600;">温馨提示：</span>
+            可以搜索单曲或导入歌单进行标注。如果直接点击生成而不添加任何歌曲，系统将自动从后台<b>默认舞曲库</b>中抽取歌曲填满时长。
+        </p>
+
         <div style="display:flex; gap:10px;">
-            <input type="text" id="search-in" placeholder="搜索歌曲或歌手...">
+            <input type="text" id="search-in" placeholder="搜索歌曲或歌手..." style="margin:0">
             <button onclick="searchSong()" class="btn btn-main" style="width:80px; margin:0; background:#333;">搜索</button>
         </div>
         <div style="display:flex; gap:10px; margin-top:10px;">
-            <input type="text" id="import-url" placeholder="歌单链接或ID...">
+            <input type="text" id="import-url" placeholder="歌单链接或ID..." style="margin:0">
             <button onclick="importPlaylist()" class="btn btn-main" style="width:80px; margin:0; background:#333;">导入</button>
         </div>
 

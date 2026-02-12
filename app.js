@@ -146,9 +146,38 @@ app.post('/api/generate', async (req, res) => {
 });
 
 
-app.get('/api/login/key', async (req, res) => res.json((await netease.login_qr_key({})).body));
-app.get('/api/login/create', async (req, res) => res.json((await netease.login_qr_create({ key: req.query.key, qrimg: true })).body));
-app.get('/api/login/check', async (req, res) => res.json((await netease.login_qr_check({ key: req.query.key })).body));
+app.get('/api/login/key', async (req, res) => {
+    try {
+        const result = await netease.login_qr_key({
+            // 随便找一个国内的城市 IP，例如上海
+            realIP: '116.228.89.233' 
+        });
+        res.json(result.body);
+    } catch (e) { res.json({ success: false }); }
+});
+
+// 2. 修改创建二维码的接口
+app.get('/api/login/create', async (req, res) => {
+    try {
+        const result = await netease.login_qr_create({
+            key: req.query.key,
+            qrimg: true,
+            realIP: '116.228.89.233' // 保持 IP 一致
+        });
+        res.json(result.body);
+    } catch (e) { res.json({ success: false }); }
+});
+
+// 3. 修改检查状态的接口
+app.get('/api/login/check', async (req, res) => {
+    try {
+        const result = await netease.login_qr_check({
+            key: req.query.key,
+            realIP: '116.228.89.233'
+        });
+        res.json(result.body);
+    } catch (e) { res.json({ success: false }); }
+});
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`V2 PRO Fixed Running`));

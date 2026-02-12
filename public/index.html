@@ -221,20 +221,26 @@
     }
     
     function setManualCookie() {
-    const ck = document.getElementById('manual-cookie').value.trim();
-    if(ck) {
-        // 如果用户只粘贴了 MUSIC_U=xxx... 这一段，也可以工作
-        userCookie = ck;
+        let ck = document.getElementById('manual-cookie').value.trim();
+        if(!ck) return alert('请输入 Cookie');
+    
+        // 情况 A：如果你粘贴的是整段 document.cookie (推荐)
+        // 包含 MUSIC_U=xxx; __csrf=xxx; 的格式，直接使用即可
+        if (ck.includes('MUSIC_U=')) {
+            userCookie = ck;
+        } 
+        // 情况 B：如果你只粘贴了 MUSIC_U 的那一串 xxx 值
+        else {
+            // 我们帮它补齐格式。注意：这样可能缺少 __csrf，导致创建歌单失败
+            userCookie = `MUSIC_U=${ck};`; 
+            console.warn('检测到简易模式 Cookie，如果创建歌单失败，请粘贴完整 document.cookie');
+        }
+    
         document.getElementById('g-btn').disabled = false;
         document.getElementById('g-btn').innerText = 'Ready (Using Manual Cookie)';
-        
-        // 视觉反馈
         document.getElementById('l-btn').innerText = 'Authenticated (Manual)';
         document.getElementById('l-btn').style.color = 'green';
-        alert('Cookie 设置成功！现在可以开始搜索或导入了。');
-    } else {
-        alert('请输入有效的 Cookie');
-    }
+        alert('Cookie 设置成功！');
     }
 
     // --- 登录逻辑 ---

@@ -131,11 +131,12 @@
 
     async function generate() {
         const btn = document.getElementById('g-btn'), msg = document.getElementById('msg'), dur = document.getElementById('duration').value;
-        if(!dur) return alert('Duration?');
-        btn.disabled = true; msg.innerText = 'Step 1/2: Calculating your sequence...';
+        if(!dur) return alert('请填写时长');
+        btn.disabled = true; 
+        msg.innerText = '正在生成舞曲序列并创建歌单...';
         
         try {
-            const res = await fetch('/api/calculate', {
+            const res = await fetch('/api/generate', { // 修改路径为 /api/generate
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -145,31 +146,34 @@
                     requestedSongs: reqSongs
                 })
             });
-
+    
             const data = await res.json();
-            if(data.success && data.songs) {
+            if(data.success) {
                 renderAll(data.songs);
-                msg.innerHTML = '<span style="color:var(--gold)">✅ Sequence calculated. Syncing to NetEase Cloud...</span>';
-                
-                // Step 2: Async sync
-                fetch('/api/sync', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ songs: data.songs, cookie: userCookie })
-                }).then(() => {
-                    msg.innerHTML = '<span style="color:green">✅ Successfully synced to your App!</span>';
-                }).catch(() => {
-                    msg.innerHTML = '<span style="color:orange">⚠️ Poster ready. Syncing delayed, check App later.</span>';
-                });
+                // 逻辑合并，不需要再调用 /api/sync
+                msg.innerHTML = `<span style="color:green">✅ 成功！歌单已创建并同步至网易云 (ID: ${data.playlistId})</span>`;
             } else {
-                throw new Error(data.message || 'Unknown error');
+                throw new Error(data.message);
             }
         } catch(e) { 
-            console.error(e);
-            msg.innerHTML = '<span style="color:red">❌ Execution failed. Please check logs or refresh.</span>'; 
+            msg.innerHTML = `<span style="color:red">❌ 失败：${e.message}</span>`; 
         } finally {
             btn.disabled = false;
         }
+    }
+
+    function downloadPoster() {
+        // 增加 useCORS 防止图片跨域导致无法生成海报
+        html2canvas(document.getElementById('poster-wrap'), { 
+            scale: 2, 
+            backgroundColor: '#fff',
+            useCORS: true 
+        }).then(c => {
+            const l = document.createElement('a'); 
+            l.download = `Setlist_${Date.now()}.png`; 
+            l.href = c.toDataURL(); 
+            l.click();
+        });
     }
 
     function renderAll(songs) {
@@ -185,12 +189,6 @@
         document.getElementById('p-total').innerText = fmtTime(total);
         document.getElementById('web-preview').style.display = 'block';
         window.scrollTo({ top: document.getElementById('web-preview').offsetTop, behavior: 'smooth' });
-    }
-
-    function downloadPoster() {
-        html2canvas(document.getElementById('poster-wrap'), { scale: 2, backgroundColor: '#fff' }).then(c => {
-            const l = document.createElement('a'); l.download = `Setlist_${Date.now()}.png`; l.href = c.toDataURL(); l.click();
-        });
     }
 </script>
 </body>

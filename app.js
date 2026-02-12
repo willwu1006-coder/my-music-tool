@@ -118,7 +118,7 @@ app.post('/api/generate', async (req, res) => {
         const trackIds = result.map(s => s.id).reverse().join(',');
         const createRes = await netease.playlist_create({ name: `DanceV2_${new Date().toLocaleDateString()}`, cookie });
         const newId = createRes.body.id;
-        await netease.playlist_tracks({ op: 'add', pid: newId, tracks: trackIds, cookie });
+        netease.playlist_tracks({ op: 'add', pid: newId, tracks: trackIds, cookie });
         
         res.json({ success: true, count: result.length, playlistId: newId, songs: result });
     } catch (error) {

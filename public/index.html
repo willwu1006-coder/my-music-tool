@@ -3,42 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dance Music Tool v2</title>
+    <title>Dance Music Tool v2 | 精准排歌</title>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;600&display=swap');
-        :root { --accent: #1a3a5f; --gold: #c5a059; --bg: #fdfcf8; }
-        body { background: var(--bg); color: #333; font-family: 'Inter', sans-serif; margin: 0; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; }
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Inter:wght@300;400;600&display=swap');
+
+        :root { --accent: #1A3A5F; --gold: #C5A059; --bg: #FDFCF8; --text: #2D3436; }
         
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0; padding: 40px 20px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 650px; }
-        header { text-align: center; margin-bottom: 50px; }
-        h1 { font-family: 'Playfair Display', serif; font-size: 48px; color: var(--accent); margin: 0; }
         
-        .card { background: #fff; padding: 40px; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #f0ead6; margin-bottom: 30px; }
-        .section-label { font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; display: block; border-bottom: 1px solid #f0ead6; padding-bottom: 5px; }
-        
-        input, textarea, select { width: 100%; border: none; border-bottom: 1px solid #eee; padding: 12px 0; font-size: 15px; outline: none; background: transparent; margin-bottom: 20px; font-family: inherit; }
+        header { text-align: center; margin-bottom: 40px; }
+        h1 { font-family: 'Playfair Display', serif; font-size: 42px; margin: 0; color: var(--accent); letter-spacing: -1px; }
+        .tagline { font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: var(--gold); margin-top: 10px; font-weight: bold; }
+
+        /* 卡片样式 */
+        .card { background: #fff; border-radius: 4px; padding: 35px; box-shadow: 0 15px 40px rgba(26, 58, 95, 0.05); border: 1px solid #F0EAD6; margin-bottom: 25px; }
+        .section-label { font-size: 10px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; display: block; border-bottom: 1px solid #F9F7F0; padding-bottom: 8px; }
+
+        /* 输入控件 */
+        input, textarea, select { width: 100%; border: none; border-bottom: 1.5px solid #EEE; padding: 12px 0; font-size: 15px; outline: none; background: transparent; margin-bottom: 20px; font-family: inherit; }
         input:focus { border-bottom-color: var(--gold); }
-
-        /* 搜索框样式 */
-        .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
-        .btn { padding: 12px 25px; cursor: pointer; font-weight: 600; text-transform: uppercase; font-size: 12px; transition: 0.3s; border: none; }
+        .btn { padding: 14px 25px; cursor: pointer; font-weight: 600; text-transform: uppercase; font-size: 12px; transition: 0.3s; border: none; }
         .btn-black { background: #000; color: #fff; }
-        .btn-gold { background: var(--gold); color: #fff; }
-        .btn-outline { background: transparent; border: 1px solid #eee; color: #999; }
+        .btn-gold { background: var(--gold); color: #fff; width: 100%; height: 55px; font-size: 15px; margin-top: 10px; }
         
-        /* 搜索结果 */
-        #search-results { max-height: 250px; overflow-y: auto; background: #fafafa; border-radius: 4px; margin-bottom: 20px; font-size: 13px; }
-        .search-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
-        .request-tag { font-size: 10px; padding: 2px 6px; border: 1px solid var(--gold); color: var(--gold); border-radius: 10px; margin-right: 10px; }
+        /* 搜索列表 */
+        #search-results { max-height: 200px; overflow-y: auto; background: #FAF9F6; margin-bottom: 20px; border-radius: 4px; }
+        .search-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; border-bottom: 1px solid #EEE; font-size: 13px; }
+        .request-tag { display: inline-block; font-size: 10px; padding: 3px 8px; background: var(--bg); border: 1px solid var(--gold); color: var(--gold); border-radius: 20px; margin: 5px 5px 0 0; cursor: pointer; }
 
-        /* 实时列表预览 */
-        #web-preview { display: none; width: 100%; margin-top: 40px; }
-        .song-row { display: grid; grid-template-columns: 80px 1fr 60px; padding: 15px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+        /* --- 网页预览列表 (还原回归) --- */
+        #web-preview { width: 100%; display: none; margin-top: 40px; animation: slideIn 0.8s ease-out; }
+        .preview-header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--accent); padding-bottom: 15px; margin-bottom: 20px; }
         
-        /* 海报隐藏模版 */
-        #poster-wrap { position: absolute; left: -9999px; width: 600px; background: #fff; padding: 80px 60px; }
-        .p-item { display: grid; grid-template-columns: 100px 1fr 60px; padding: 15px 0; border-bottom: 1px solid #f9f7f0; }
+        /* 核心排版：序号(40px) | 舞种(80px) | 歌名歌手(剩余) | 时长(60px) */
+        .song-row { display: grid; grid-template-columns: 40px 90px 1fr 60px; padding: 18px 0; border-bottom: 1px solid #F5F1E8; align-items: center; }
+        .s-index { color: #CCC; font-family: 'Playfair Display'; font-style: italic; font-size: 16px; }
+        .s-type { color: var(--gold); font-weight: bold; font-size: 13px; }
+        .s-info { display: flex; flex-direction: column; overflow: hidden; }
+        .s-name { font-weight: 600; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .s-ar { font-size: 12px; color: #999; margin-top: 2px; }
+        .s-dt { text-align: right; color: #BBB; font-size: 12px; font-family: 'Inter'; }
+
+        /* --- 海报模版 (严格对齐版) --- */
+        #poster-wrap { 
+            position: absolute; left: -9999px; width: 600px; background: #FFF; padding: 80px 60px; color: var(--text);
+            box-sizing: border-box; border: 1px solid #EEE;
+        }
+        .p-title { font-family: 'Playfair Display', serif; font-size: 56px; text-align: center; color: var(--accent); margin: 0; }
+        .p-subtitle { text-align: center; font-size: 12px; letter-spacing: 6px; color: var(--gold); margin: 10px 0 60px; font-weight: bold; }
+        
+        .p-head { display: grid; grid-template-columns: 100px 1fr 60px; border-bottom: 1px solid var(--accent); padding-bottom: 10px; color: var(--accent); font-size: 11px; font-weight: bold; letter-spacing: 1px; }
+        .p-item { display: grid; grid-template-columns: 100px 1fr 60px; padding: 20px 0; border-bottom: 1px solid #F9F7F0; align-items: center; }
+        .p-type { color: var(--gold); font-size: 13px; font-weight: bold; }
+        .p-name { font-size: 17px; font-weight: 600; color: #000; margin-bottom: 4px; }
+        .p-ar { font-size: 13px; color: #888; }
+        .p-dt { text-align: right; font-size: 13px; color: #AAA; }
+        
+        .p-footer { margin-top: 70px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .p-total-label { font-size: 10px; color: #BBB; letter-spacing: 1px; }
+        .p-total-val { font-size: 28px; font-family: 'Playfair Display'; color: var(--accent); }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -46,63 +73,69 @@
 <div class="container">
     <header>
         <h1>Dance Music Tool</h1>
-        <div style="font-size:12px; color:var(--gold); letter-spacing:4px; margin-top:10px;">PRO EDITION V2.0</div>
+        <div class="tagline">Bespoke Sequential Curation</div>
     </header>
 
-    <!-- 登录模块 -->
-    <div class="card" id="login-section">
+    <!-- 登录 -->
+    <div class="card">
         <span class="section-label">Authentication</span>
-        <button class="btn btn-outline" id="l-btn" onclick="startLogin()" style="width:100%">Click to Scan QR Code</button>
+        <button class="btn btn-outline" id="l-btn" onclick="startLogin()" style="width:100%; border:1px solid #EEE; background:#FCFCFB; color:#888;">Tap to Authenticate via QR</button>
         <div id="qr-view" style="text-align:center; display:none; margin-top:20px;">
-            <img id="qr-img" src="" style="width:150px; border:1px solid #eee;">
-            <p id="qr-msg" style="font-size:12px; color:var(--gold);">Waiting for scan...</p>
+            <img id="qr-img" src="" style="width:160px; border:1px solid #EEE; padding:5px; background:#fff;">
+            <p id="qr-msg" style="font-size:12px; color:var(--gold); margin-top:10px;">Waiting for scanning...</p>
         </div>
     </div>
 
-    <!-- 点歌模块 (V2) -->
+    <!-- 点歌 (V2) -->
     <div class="card">
-        <span class="section-label">Music Request (V2 New)</span>
-        <div class="search-box">
-            <input type="text" id="search-in" placeholder="Search song or artist..." style="margin:0">
+        <span class="section-label">Song Request (Priority)</span>
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <input type="text" id="search-in" placeholder="Search song or artist..." style="margin:0; flex:1;">
             <button class="btn btn-black" onclick="searchSong()">Search</button>
         </div>
         <div id="search-results"></div>
-        <div id="my-requests" style="font-size:13px; color:var(--accent);"></div>
+        <div id="my-requests"></div>
     </div>
 
-    <!-- 歌单与时长模块 (V1 兼容) -->
+    <!-- 参数 (V1) -->
     <div class="card">
-        <span class="section-label">Configuration</span>
-        <label style="font-size:11px; color:#ccc;">Playlist Links (Optional)</label>
-        <textarea id="ids" rows="1" placeholder="Paste custom links or leave empty for default..."></textarea>
-        
-        <label style="font-size:11px; color:#ccc;">Target Duration (Minutes)</label>
+        <span class="section-label">Configurations</span>
+        <label>Playlist Links</label>
+        <textarea id="ids" rows="1" placeholder="Optional: paste custom links..."></textarea>
+        <label>Duration (Minutes)</label>
         <input type="number" id="duration" placeholder="e.g. 120">
-        
-        <button class="btn btn-gold" id="g-btn" disabled onclick="generate()" style="width:100%; height:60px; font-size:16px;">Generate & Sync</button>
+        <button class="btn btn-gold" id="g-btn" disabled onclick="generate()">Generate & Sync Playlist</button>
+        <div id="msg" style="text-align: center; font-size: 12px; margin-top: 20px; color: #999; font-style: italic;"></div>
     </div>
 
-    <!-- 预览区域 -->
+    <!-- 网页预览列表 -->
     <div id="web-preview">
-        <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid var(--accent); padding-bottom:10px;">
-            <h2 style="font-family:'Playfair Display'; margin:0;">Setlist Preview</h2>
-            <span onclick="downloadPoster()" style="color:var(--gold); font-weight:bold; cursor:pointer; font-size:12px;">[ DOWNLOAD POSTER ]</span>
+        <div class="preview-header">
+            <h2 style="margin:0; font-family:'Playfair Display'; font-size:26px; color:var(--accent);">Setlist</h2>
+            <span onclick="downloadPoster()" style="color:var(--gold); font-weight:bold; cursor:pointer; font-size:12px; letter-spacing:1px;">[ DOWNLOAD POSTER ]</span>
         </div>
         <div id="preview-list"></div>
     </div>
 </div>
 
-<!-- 海报模版 -->
+<!-- 海报渲染模版 -->
 <div id="poster-wrap">
-    <div style="font-family:'Playfair Display'; font-size:50px; text-align:center; color:var(--accent);">Setlist</div>
-    <div id="p-date" style="text-align:center; font-size:12px; letter-spacing:5px; color:var(--gold); margin-bottom:50px;">CURATED DANCE SESSION</div>
+    <div class="p-title">Setlist</div>
+    <div class="p-subtitle">CURATED DANCE SESSION</div>
+    <div class="p-head">
+        <div>STYLE</div>
+        <div>SONG & ARTIST</div>
+        <div style="text-align:right">TIME</div>
+    </div>
     <div id="p-container"></div>
-    <div style="margin-top:50px; display:flex; justify-content:space-between; align-items:flex-end;">
+    <div class="p-footer">
         <div>
-            <div style="font-size:10px; color:#bbb;">TOTAL DURATION</div>
-            <div id="p-total" style="font-size:24px; font-family:'Playfair Display';">00:00</div>
+            <div class="p-total-label">TOTAL DURATION</div>
+            <div id="p-total" class="p-total-val">00:00</div>
         </div>
-        <div style="font-size:10px; color:#fff; background:var(--accent); padding:5px 10px;">DANCE MUSIC TOOL</div>
+        <div style="text-align: right; font-size: 10px; color: #FFF; background: var(--accent); padding: 8px 15px; letter-spacing: 2px;">
+            DANCE MUSIC TOOL
+        </div>
     </div>
 </div>
 
@@ -111,6 +144,7 @@
     const styles = ["慢三", "平四", "伦巴", "并四", "快三", "慢四", "吉特巴"];
 
     function formatTime(ms) {
+        if(!ms || isNaN(ms)) return "0:00";
         const s = Math.floor(ms / 1000);
         return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
     }
@@ -127,6 +161,7 @@
                 clearInterval(timer);
                 currentCookie = res.cookie;
                 document.getElementById('g-btn').disabled = false;
+                document.getElementById('g-btn').innerText = 'Ready to Generate';
                 view.style.display = 'none';
                 btn.innerText = 'Authenticated Successfully';
             }
@@ -140,7 +175,7 @@
         document.getElementById('search-results').innerHTML = res.data.map(s => `
             <div class="search-item">
                 <span>${s.name} - ${s.ar.map(a=>a.name).join('/')}</span>
-                <select style="width:100px; margin:0; font-size:12px;" onchange="addRequest(${s.id}, '${s.name}', '${s.ar.map(a=>a.name).join('/')}', ${s.dt}, this)">
+                <select style="width:90px; margin:0; font-size:12px; border-bottom:1px solid var(--gold);" onchange="addRequest(${s.id}, '${s.name.replace(/'/g, "\\'")}', '${s.ar.map(a=>a.name).join('/').replace(/'/g, "\\'")}', ${s.dt || s.duration}, this)">
                     <option value="">+ Add</option>
                     ${styles.map(t => `<option value="${t}">${t}</option>`).join('')}
                 </select>
@@ -152,21 +187,20 @@
         if(!sel.value) return;
         requestedSongs.push({ id, name, ar, dt, type: sel.value });
         sel.value = "";
-        document.getElementById('my-requests').innerHTML = 'Selected: ' + requestedSongs.map((s,i) => `
-            <span class="request-tag" onclick="requestedSongs.splice(${i},1);updateReqUI()">${s.type}:${s.name} ×</span>
-        `).join(' ');
+        updateReqUI();
     }
 
     function updateReqUI() {
-        document.getElementById('my-requests').innerHTML = requestedSongs.length ? 'Selected: ' + requestedSongs.map((s,i) => `
-            <span class="request-tag" onclick="requestedSongs.splice(${i},1);updateReqUI()">${s.type}:${s.name} ×</span>
-        `).join(' ') : '';
+        const container = document.getElementById('my-requests');
+        container.innerHTML = requestedSongs.length ? requestedSongs.map((s,i) => `
+            <span class="request-tag" onclick="requestedSongs.splice(${i},1);updateReqUI()">${s.type}: ${s.name} ×</span>
+        `).join('') : '';
     }
 
     async function generate() {
-        const btn = document.getElementById('g-btn'), dur = document.getElementById('duration').value;
-        if(!dur) return alert('Duration?');
-        btn.disabled = true; btn.innerText = 'SYNTHESIZING...';
+        const btn = document.getElementById('g-btn'), msg = document.getElementById('msg'), dur = document.getElementById('duration').value;
+        if(!dur) return alert('Please enter duration');
+        btn.disabled = true; msg.innerText = 'Synthesizing your rhythmic sequence...';
         
         try {
             const res = await fetch('/api/generate', {
@@ -180,59 +214,60 @@
                 })
             });
             const data = await res.json();
-            if(data.success) renderAll(data.songs);
-            else alert(data.message);
-        } catch(e) { alert('Error'); }
-        btn.disabled = false; btn.innerText = 'Generate & Sync';
+            if(data.success) {
+                renderAll(data.songs);
+                msg.innerText = 'Synchronized to your cloud library.';
+            } else {
+                msg.innerText = 'Error: ' + data.message;
+            }
+        } catch(e) { msg.innerText = 'Network error.'; }
+        btn.disabled = false;
     }
 
+    function renderAll(songs) {
+        const webList = document.getElementById('preview-list'), pList = document.getElementById('p-container');
+        webList.innerHTML = ''; pList.innerHTML = '';
+        let totalMs = 0;
 
-// 修改 renderAll 函数中的 row 变量，确保 layout 稳定
-function renderAll(songs) {
-    const webList = document.getElementById('preview-list'), pList = document.getElementById('p-container');
-    webList.innerHTML = ''; pList.innerHTML = '';
-    let totalMs = 0;
-    
-    songs.forEach((s, i) => {
-        totalMs += (s.dt || 0);
-        const timeStr = formatTime(s.dt);
-        const typeStr = s.type || "未知舞种"; // 容错处理
+        songs.forEach((s, i) => {
+            totalMs += (s.dt || 0);
+            const timeStr = formatTime(s.dt);
+            const typeStr = s.type || "Unknown";
 
-        // 网页预览 HTML
-        const row = `
-            <div class="song-row">
-                <span style="color:#ccc; font-style:italic;">${(i+1).toString().padStart(2,'0')}</span>
-                <span style="color:var(--gold); font-weight:bold;">${typeStr}</span>
-                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                    ${s.name} <small style="color:#999;">/ ${s.ar}</small>
-                </span>
-                <span style="text-align:right; color:#ccc;">${timeStr}</span>
-            </div>`;
-            
-        // 海报预览 HTML
-        const pRow = `
-            <div class="p-item">
-                <div class="p-type">${typeStr}</div>
-                <div>
-                    <div style="font-weight:600;">${s.name}</div>
-                    <div style="font-size:12px; color:#999;">${s.ar}</div>
-                </div>
-                <div style="text-align:right; font-size:12px; color:#bbb;">${timeStr}</div>
-            </div>`;
-            
-        webList.innerHTML += row;
-        pList.innerHTML += pRow;
+            // 网页版 - 严格对齐
+            webList.innerHTML += `
+                <div class="song-row">
+                    <span class="s-index">${(i+1).toString().padStart(2,'0')}</span>
+                    <span class="s-type">${typeStr}</span>
+                    <div class="s-info">
+                        <span class="s-name">${s.name}</span>
+                        <span class="s-ar">${s.ar}</span>
+                    </div>
+                    <span class="s-dt">${timeStr}</span>
+                </div>`;
+
+            // 海报版 - 艺术对齐
+            pList.innerHTML += `
+                <div class="p-item">
+                    <div class="p-type">${typeStr}</div>
+                    <div>
+                        <div class="p-name">${s.name}</div>
+                        <div class="p-ar">${s.ar}</div>
+                    </div>
+                    <div class="p-dt">${timeStr}</div>
+                </div>`;
         });
 
-    document.getElementById('p-total').innerText = formatTime(totalMs);
-    document.getElementById('p-date').innerText = new Date().toLocaleDateString() + ' SESSION';
-    document.getElementById('web-preview').style.display = 'block';
-    window.scrollTo({ top: document.getElementById('web-preview').offsetTop, behavior: 'smooth' });
+        document.getElementById('p-total').innerText = formatTime(totalMs);
+        document.getElementById('p-date').innerText = new Date().toLocaleDateString() + ' SESSION';
+        document.getElementById('web-preview').style.display = 'block';
+        window.scrollTo({ top: document.getElementById('web-preview').offsetTop, behavior: 'smooth' });
     }
 
     function downloadPoster() {
-        html2canvas(document.getElementById('poster-wrap'), { scale: 2, backgroundColor: '#fff' }).then(c => {
-            const l = document.createElement('a'); l.download = `Dance_v2_${Date.now()}.png`; l.href = c.toDataURL(); l.click();
+        const wrap = document.getElementById('poster-wrap');
+        html2canvas(wrap, { scale: 2, backgroundColor: '#FFF' }).then(c => {
+            const l = document.createElement('a'); l.download = `DanceList_${Date.now()}.png`; l.href = c.toDataURL(); l.click();
         });
     }
 </script>

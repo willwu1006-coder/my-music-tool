@@ -57,20 +57,19 @@ app.post('/api/generate', async (req, res) => {
     try {
         let { playlistIds, duration, cookie, requestedSongs = [] } = req.body;
         
-        // 1. 确定底库歌单 (V1 逻辑)
-        let basePlaylistIds = [];
+        // 1. 获取底库 ID
+        let baseIds = [];
         if (!playlistIds || playlistIds.length === 0) {
-            basePlaylistIds = DEFAULT_PLAYLISTS.map(p => p.id);
+            baseIds = DEFAULT_PLAYLISTS.map(p => p.id);
         } else {
-            basePlaylistIds = await Promise.all(playlistIds.map(l => getRealId(l)));
+            baseIds = await Promise.all(playlistIds.map(l => getRealId(l)));
         }
 
-        // 2. 获取底库歌曲
-        const responses = await Promise.all(basePlaylistIds.map(id => netease.playlist_track_all({ id, cookie })));
-        const baseData = responses.map(r => shuffle([...(r.body.songs || [])])); // 每个底库内部随机
+        // 2. 获取底库数据并洗牌
+        const responses = await Promise.all(baseIds.map(id => id ? netease.playlist_track_all({ id, cookie }) : {body:{songs:[]}}));
+        const baseData = responses.map(r => shuffle([...(r.body.songs || [])]));
 
-        // 3. 整理点歌池 (V2 逻辑)
-        // 把用户点的歌按舞种分类: { "慢三": [song1, song2], "平四": [] }
+        // 3. 整理点歌池
         let requestPool = {};
         DEFAULT_PLAYLISTS.forEach(p => requestPool[p.name] = []);
         requestedSongs.forEach(s => {
@@ -85,29 +84,32 @@ app.post('/api/generate', async (req, res) => {
 
         while (currentMs < targetMs && hasMore) {
             hasMore = false;
-            for (let i = 0; i < DEFAULT_PLAYLISTS.length; i++) {
+            // 严格按 0-6 索引循环，对应 7 种舞
+            for (let i = 0; i < 7; i++) {
+                // 重点修复：无论底库多长，舞种名称始终取 DEFAULT_PLAYLISTS 的对应项
                 const typeName = DEFAULT_PLAYLISTS[i].name;
                 let song = null;
 
-                // 优先从点歌池取
                 if (requestPool[typeName] && requestPool[typeName].length > 0) {
                     song = requestPool[typeName].shift();
                     hasMore = true;
-                } 
-                // 点歌池没了，从底库取
-                else if (basePointers[i] < baseData[i].length) {
+                } else if (baseData[i] && basePointers[i] < baseData[i].length) {
                     song = baseData[i][basePointers[i]++];
                     hasMore = true;
                 }
 
                 if (song && !usedIds.has(song.id)) {
+                    // 重点修复：处理 dt 或 duration 字段
+                    const songDuration = song.dt || song.duration || 0; 
                     result.push({
-                        id: song.id, name: song.name,
-                        ar: song.ar ? (Array.isArray(song.ar) ? song.ar.map(a => a.name).join('/') : song.ar) : "未知",
-                        dt: song.dt, type: typeName
+                        id: song.id,
+                        name: song.name,
+                        ar: song.ar ? (Array.isArray(song.ar) ? song.ar.map(a => a.name).join('/') : song.ar) : (song.artists ? song.artists.map(a=>a.name).join('/') : "未知歌手"),
+                        dt: songDuration,
+                        type: typeName
                     });
                     usedIds.add(song.id);
-                    currentMs += (song.dt || 0);
+                    currentMs += songDuration;
                 }
                 if (currentMs >= targetMs) break;
             }
@@ -121,7 +123,7 @@ app.post('/api/generate', async (req, res) => {
         res.json({ success: true, count: result.length, playlistId: newId, songs: result });
     } catch (error) {
         console.error(error);
-        res.json({ success: false, message: '生成失败' });
+        res.json({ success: false, message: '生成失败，请重试' });
     }
 });
 
@@ -130,4 +132,4 @@ app.get('/api/login/create', async (req, res) => res.json((await netease.login_q
 app.get('/api/login/check', async (req, res) => res.json((await netease.login_qr_check({ key: req.query.key })).body));
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log(`V2 PRO Running`));
+app.listen(PORT, () => console.log(`V2 PRO Fixed Running`));

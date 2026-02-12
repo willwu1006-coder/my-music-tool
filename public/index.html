@@ -13,93 +13,97 @@
         .card { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #f0ead6; }
         .section-label { font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         
-        /* 列表对齐样式 */
-        .song-row { display: grid; grid-template-columns: 35px 70px 1fr 140px 60px; gap: 10px; padding: 10px 0; border-bottom: 1px solid #F5F5F5; font-size: 13px; align-items: center; }
+        /* 列表展示 */
+        .song-row { display: grid; grid-template-columns: 35px 70px 1fr 140px 60px; gap: 10px; padding: 12px 0; border-bottom: 1px solid #F5F5F5; font-size: 13px; align-items: center; }
         .song-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #888; }
 
         input, select { width: 100%; border: none; border-bottom: 1px solid #eee; padding: 10px 0; margin-bottom: 15px; outline: none; background: transparent; }
         .btn { padding: 12px; border: none; cursor: pointer; border-radius: 4px; font-weight: 600; width: 100%; margin-bottom: 8px; font-size: 12px; }
         .btn-main { background: var(--accent); color: #fff; }
+        .btn-main:disabled { background: #ccc; cursor: not-allowed; }
         .btn-sub { background: #f8f9fa; border: 1px solid #eee; color: #666; }
-        .btn-gold { background: var(--gold); color: #fff; }
-
+        
         #staging-area { background: #fafafa; border: 1px dashed #ddd; border-radius: 4px; padding: 10px; margin-bottom: 15px; max-height: 250px; overflow-y: auto; }
         .request-tag { display: inline-block; font-size: 11px; padding: 3px 10px; background: #fff; border: 1px solid var(--gold); color: var(--gold); border-radius: 15px; margin: 4px; cursor: pointer; }
+        
+        /* 账号小模块 */
+        .account-mini { font-size: 12px; color: #999; text-align: right; margin-bottom: 10px; }
+        .account-mini a { color: var(--gold); cursor: pointer; text-decoration: underline; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header style="text-align:center; margin-bottom:30px;">
+    <header style="text-align:center; margin-bottom:20px;">
         <h1 style="font-family:'Playfair Display'; color:var(--accent); margin:0;">Dance Music Tool</h1>
-        <div id="user-status" style="font-size: 12px; color: var(--gold); margin-top: 5px;">个人账号系统已就绪</div>
+        <div id="account-info" class="account-mini">
+            <span id="user-display">未登录个人账号</span> | 
+            <a onclick="toggleAuth()">登录/注册 (可选)</a>
+        </div>
     </header>
 
-    <!-- 1. 账号 -->
-    <div class="card" id="auth-section">
-        <span class="section-label">1. Account System</span>
+    <!-- 1. 账号模块 (默认隐藏) -->
+    <div class="card" id="auth-section" style="display:none;">
+        <span class="section-label">Optional Account (Save your session)</span>
         <div style="display:flex; gap:10px;">
             <input type="text" id="u-name" placeholder="用户名">
             <input type="password" id="u-pass" placeholder="密码">
         </div>
         <div style="display:flex; gap:10px;">
-            <button class="btn btn-sub" onclick="handleAuth('login')">登录</button>
-            <button class="btn btn-sub" onclick="handleAuth('register')">注册</button>
+            <button class="btn btn-sub" onclick="handleAuth('login')">登录并同步</button>
+            <button class="btn btn-sub" onclick="handleAuth('register')">注册新账号</button>
         </div>
     </div>
 
-    <!-- 2. 网易云连接 -->
+    <!-- 2. 网易云连接 (必须) -->
     <div class="card">
-        <span class="section-label">2. NetEase Connectivity</span>
+        <span class="section-label">1. NetEase Connectivity</span>
         <button class="btn btn-sub" id="l-btn" onclick="startLogin()">网易云扫码连接</button>
         <div id="qr-view" style="display:none; text-align:center; padding:10px;"><img id="qr-img" style="width:130px;"></div>
-        <details style="margin-top:10px;"><summary style="font-size:12px; color:#999; cursor:pointer;">手动输入 Cookie</summary>
-            <textarea id="manual-cookie" placeholder="MUSIC_U=..." style="width:100%; height:50px; margin-top:5px; font-size:11px;"></textarea>
-            <button onclick="setManualCookie()" class="btn btn-sub" style="margin-top:5px; padding:5px;">存入账号</button>
+        
+        <details style="margin-top:10px;">
+            <summary style="font-size:12px; color:#999; cursor:pointer;">扫码失败？手动粘贴 Cookie</summary>
+            <textarea id="manual-cookie" placeholder="MUSIC_U=..." style="width:100%; height:50px; margin-top:5px; font-size:11px; border:1px solid #eee;"></textarea>
+            <button onclick="setManualCookie()" class="btn btn-sub" style="margin-top:5px; padding:5px; font-size:10px;">确定并连接</button>
         </details>
     </div>
 
-    <!-- 3. 数据源 (搜索 + 导入) -->
+    <!-- 3. 数据源 -->
     <div class="card">
-        <span class="section-label">3. Add Music</span>
-        <p style="font-size:12px; color:#999; margin-top:0;">提示：您可以搜索单曲或导入整个歌单。如不添加任何歌曲，系统将使用默认舞曲库填充。</p>
-        
+        <span class="section-label">2. Select Music</span>
         <div style="display:flex; gap:10px;">
-            <input type="text" id="search-in" placeholder="输入歌名或歌手..." style="margin:0">
-            <button onclick="searchSong()" class="btn btn-gold" style="width:80px; margin:0;">搜索</button>
+            <input type="text" id="search-in" placeholder="搜索歌曲或歌手...">
+            <button onclick="searchSong()" class="btn btn-main" style="width:80px; margin:0; background:#333;">搜索</button>
         </div>
-        <div style="height:15px;"></div>
-        <div style="display:flex; gap:10px;">
-            <input type="text" id="import-url" placeholder="歌单链接或ID..." style="margin:0">
-            <button onclick="importPlaylist()" class="btn btn-gold" style="width:80px; margin:0;">导入</button>
+        <div style="display:flex; gap:10px; margin-top:10px;">
+            <input type="text" id="import-url" placeholder="歌单链接或ID...">
+            <button onclick="importPlaylist()" class="btn btn-main" style="width:80px; margin:0; background:#333;">导入</button>
         </div>
 
         <div id="staging-area" style="display:none; margin-top:20px;">
-            <div style="font-size:11px; color:#999; margin-bottom:10px;">待处理列表 (点击下拉框标记舞种):</div>
             <div id="staging-list"></div>
         </div>
-
         <div id="my-requests" style="margin-top:15px;"></div>
     </div>
 
     <!-- 4. 配置生成 -->
     <div class="card">
-        <span class="section-label">4. Final Configuration</span>
+        <span class="section-label">3. Generate Configuration</span>
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px; font-size:13px; color:#666;">
             <input type="checkbox" id="fill-toggle" checked style="width:auto; margin:0;">
-            <label for="fill-toggle">时长不足时，自动从默认库抽取舞曲补全</label>
+            <label for="fill-toggle">时长不足时，自动从默认库抽取补全</label>
         </div>
-        <input type="number" id="duration" placeholder="目标总时长 (分钟)，如 120">
-        <button class="btn btn-main" id="g-btn" onclick="generate()">生成并同步网易云歌单</button>
+        <input type="number" id="duration" placeholder="目标总时长 (分钟)">
+        <button class="btn btn-main" id="g-btn" onclick="generate()" disabled>连接网易云后开始编排</button>
         <div id="msg" style="text-align:center; font-size:12px; color:#999; margin-top:10px;"></div>
     </div>
 
     <!-- 5. 预览 -->
     <div id="web-preview" style="display:none; width:100%; margin-top:20px;">
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid var(--accent); padding-bottom:8px; margin-bottom:20px;">
-            <h2 style="margin:0; font-family:'Playfair Display'; font-size:24px; color:var(--accent);">Setlist Preview</h2>
-            <button onclick="downloadPoster()" style="font-size:11px; border:1px solid var(--gold); background:none; color:var(--gold); padding:4px 10px; cursor:pointer;">导出海报图片</button>
+            <h2 style="margin:0; font-family:'Playfair Display'; font-size:24px; color:var(--accent);">Preview List</h2>
+            <button onclick="downloadPoster()" style="font-size:11px; border:1px solid var(--gold); background:none; color:var(--gold); padding:4px 10px; cursor:pointer;">[ 导出图片海报 ]</button>
         </div>
         <div id="preview-list"></div>
     </div>
@@ -115,22 +119,50 @@
     let userCookie = "", currentUsername = "", stagedSongs = [], reqSongs = [];
     const styles = ["慢三", "平四", "伦巴", "并四", "快三", "慢四", "吉特巴"];
 
-    // 账号系统
+    function toggleAuth() {
+        const sec = document.getElementById('auth-section');
+        sec.style.display = sec.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // 更新网易云状态标识
+    function updateLoginStatus(source) {
+        if(userCookie) {
+            document.getElementById('l-btn').innerText = `网易云：已连接 (${source})`;
+            document.getElementById('l-btn').style.color = 'green';
+            document.getElementById('g-btn').disabled = false;
+            document.getElementById('g-btn').innerText = '开始编排并生成歌单';
+        }
+    }
+
+    // 账号系统 (可选)
     async function handleAuth(type) {
         const username = document.getElementById('u-name').value, password = document.getElementById('u-pass').value;
+        if(!username || !password) return alert('请填写账号密码');
         const res = await fetch(`/api/auth/${type}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
         const data = await res.json();
         if(data.success) {
             if(type === 'login') {
-                currentUsername = username; userCookie = data.neteaseCookie;
-                document.getElementById('user-status').innerText = `当前用户: ${username}`;
+                currentUsername = username;
+                document.getElementById('user-display').innerText = `你好, ${username}`;
                 document.getElementById('auth-section').style.display = 'none';
-                if(userCookie) document.getElementById('l-btn').innerText = '网易云：已通过账号同步';
-            } else alert('注册成功');
-        } else alert('操作失败');
+                if(data.neteaseCookie) {
+                    userCookie = data.neteaseCookie;
+                    updateLoginStatus('从账号加载');
+                } else if(userCookie) {
+                    // 如果已经连接了网易云，自动同步到刚登录的账号
+                    syncCookie();
+                }
+            } else alert('注册成功，请登录');
+        } else alert(data.message);
     }
 
-    // 扫码连接
+    async function syncCookie() {
+        if(currentUsername && userCookie) {
+            await fetch('/api/auth/update-cookie', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: currentUsername, cookie: userCookie }) });
+        }
+    }
+
+    // 网易云连接
     async function startLogin() {
         const box = document.getElementById('qr-view'), img = document.getElementById('qr-img');
         box.style.display = 'block';
@@ -140,39 +172,29 @@
         const timer = setInterval(async () => {
             const res = await (await fetch(`/api/login/check?key=${unikey}`)).json();
             if (res.code === 803) {
-                clearInterval(timer); userCookie = res.cookie; box.style.display = 'none';
-                document.getElementById('l-btn').innerText = '网易云：连接成功';
-                if(currentUsername) fetch('/api/auth/update-cookie', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: currentUsername, cookie: userCookie }) });
+                clearInterval(timer); 
+                userCookie = res.cookie; 
+                box.style.display = 'none';
+                updateLoginStatus('扫码连接');
+                syncCookie();
             }
         }, 3000);
     }
 
     function setManualCookie() {
-    let ck = document.getElementById('manual-cookie').value.trim();
-    if(!ck) return alert('请输入 Cookie');
-
-    // 情况 A：如果你粘贴的是整段 document.cookie (推荐)
-    // 包含 MUSIC_U=xxx; __csrf=xxx; 的格式，直接使用即可
-    if (ck.includes('MUSIC_U=')) {
-        userCookie = ck;
-    } 
-    // 情况 B：如果你只粘贴了 MUSIC_U 的那一串 xxx 值
-    else {
-        // 我们帮它补齐格式。注意：这样可能缺少 __csrf，导致创建歌单失败
-        userCookie = `MUSIC_U=${ck};`; 
-        console.warn('检测到简易模式 Cookie，如果创建歌单失败，请粘贴完整 document.cookie');
+        const val = document.getElementById('manual-cookie').value;
+        if(val) {
+            userCookie = val;
+            updateLoginStatus('手动粘贴');
+            syncCookie();
+            alert('连接成功');
+        }
     }
 
-    document.getElementById('g-btn').disabled = false;
-    document.getElementById('g-btn').innerText = 'Ready (Using Manual Cookie)';
-    document.getElementById('l-btn').innerText = 'Authenticated (Manual)';
-    document.getElementById('l-btn').style.color = 'green';
-    alert('Cookie 设置成功！');
-}
-
-    // 添加逻辑
+    // 数据操作
     async function searchSong() {
         const kw = document.getElementById('search-in').value;
+        if(!kw) return;
         const res = await (await fetch(`/api/search?keywords=${kw}`)).json();
         stagedSongs = res.data.map(s => ({ id: s.id, name: s.name, ar: s.ar ? s.ar.map(a=>a.name).join('/') : "未知", dt: s.dt || s.duration }));
         renderStaging();
@@ -180,9 +202,10 @@
 
     async function importPlaylist() {
         const id = document.getElementById('import-url').value;
+        if(!userCookie) return alert('请先连接网易云');
         const res = await (await fetch(`/api/playlist/info?id=${id}&cookie=${userCookie}`)).json();
-        stagedSongs = res.songs;
-        renderStaging();
+        if(res.success) { stagedSongs = res.songs; renderStaging(); }
+        else alert('导入失败，请检查歌单ID');
     }
 
     function renderStaging() {
@@ -211,14 +234,17 @@
         `).join('');
     }
 
-    // 生成预览
+    // 生成
     async function generate() {
         const dur = document.getElementById('duration').value, fill = document.getElementById('fill-toggle').checked, msg = document.getElementById('msg');
-        msg.innerText = '正在计算序列并同步网易云...';
-        const res = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ duration: parseInt(dur), cookie: userCookie, requestedSongs: reqSongs, useDefaultFill: fill }) });
-        const data = await res.json();
-        if(data.success) { renderAll(data.songs); msg.innerText = '生成完成！请打开网易云App查看。'; }
-        else msg.innerText = '失败：' + data.message;
+        if(!dur) return alert('请输入时长');
+        msg.innerText = '正在排歌并创建歌单...';
+        try {
+            const res = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ duration: parseInt(dur), cookie: userCookie, requestedSongs: reqSongs, useDefaultFill: fill }) });
+            const data = await res.json();
+            if(data.success) { renderAll(data.songs); msg.innerText = '生成成功！歌单已存入网易云。'; }
+            else msg.innerText = '失败：' + data.message;
+        } catch(e) { msg.innerText = '服务器错误'; }
     }
 
     function renderAll(songs) {
@@ -226,20 +252,8 @@
         web.innerHTML = ''; p.innerHTML = '';
         songs.forEach((s, i) => {
             const timeStr = Math.floor(s.dt/60000) + ":" + Math.floor((s.dt%60000)/1000).toString().padStart(2,'0');
-            web.innerHTML += `
-                <div class="song-row">
-                    <span class="mono">${(i+1).toString().padStart(2,'0')}</span>
-                    <span style="color:var(--gold); font-weight:600;">${s.type}</span>
-                    <span style="font-weight:500;">${s.name}</span>
-                    <span style="color:#888;">${s.ar}</span>
-                    <span class="mono" style="text-align:right;">${timeStr}</span>
-                </div>`;
-            p.innerHTML += `
-                <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #eee; font-size:14px;">
-                    <span style="width:70px; color:var(--gold); font-weight:bold;">${s.type}</span>
-                    <span style="flex:1;">${s.name} <small style="color:#999">/ ${s.ar}</small></span>
-                    <span style="width:50px; text-align:right; font-family:monospace;">${timeStr}</span>
-                </div>`;
+            web.innerHTML += `<div class="song-row"><span class="mono">${(i+1).toString().padStart(2,'0')}</span><span style="color:var(--gold); font-weight:600;">${s.type}</span><span>${s.name}</span><span>${s.ar}</span><span class="mono" style="text-align:right;">${timeStr}</span></div>`;
+            p.innerHTML += `<div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #eee; font-size:14px;"><span style="width:70px; color:var(--gold); font-weight:bold;">${s.type}</span><span style="flex:1;">${s.name} <small style="color:#999">/ ${s.ar}</small></span><span style="width:50px; text-align:right;">${timeStr}</span></div>`;
         });
         document.getElementById('web-preview').style.display = 'block';
         document.getElementById('p-date').innerText = new Date().toLocaleDateString();

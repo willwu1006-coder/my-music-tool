@@ -8,9 +8,9 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-const USER_DB = './users.json';
 // 初始化数据库
-if (!fs.existsSync(USER_DB)) fs.writeFileSync(USER_DB, JSON.stringify({}));
+const USER_DB = process.env.PERSISTENT_PATH ? `${process.env.PERSISTENT_PATH}/users.json` : './users.json';
+const getIp = (req) => req.headers['x-real-ip'] || req.ip || '116.228.89.233';
 
 // 辅助函数：读写用户数据
 const getUsers = () => JSON.parse(fs.readFileSync(USER_DB));

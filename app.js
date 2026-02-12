@@ -36,78 +36,90 @@ async function getRealId(input) {
     return null;
 }
 
+// 【新】搜索接口
+app.get('/api/search', async (req, res) => {
+    try {
+        const { keywords } = req.query;
+        const result = await netease.cloudsearch({ keywords, limit: 12 });
+        res.json({ success: true, data: result.body.result.songs || [] });
+    } catch (e) { res.json({ success: false }); }
+});
+
 app.post('/api/generate', async (req, res) => {
     try {
-        let { playlistIds, duration, cookie } = req.body;
-        let playlistConfigs = [];
-
-        // 确定歌单配置（名称+ID）
+        let { playlistIds, duration, cookie, requestedSongs = [] } = req.body;
+        
+        // 1. 确定底库歌单 (V1 逻辑)
+        let basePlaylistIds = [];
         if (!playlistIds || playlistIds.length === 0) {
-            playlistConfigs = DEFAULT_PLAYLISTS;
+            basePlaylistIds = DEFAULT_PLAYLISTS.map(p => p.id);
         } else {
-            // 如果是用户输入的，并发解析它们
-            const ids = await Promise.all(playlistIds.map(l => getRealId(l)));
-            if (ids.includes(null)) return res.json({ success: false, message: '部分歌单解析失败' });
-            playlistConfigs = ids.map((id, index) => ({ name: `舞种${index + 1}`, id }));
+            basePlaylistIds = await Promise.all(playlistIds.map(l => getRealId(l)));
         }
 
-        // 并发获取所有歌曲
-        const responses = await Promise.all(playlistConfigs.map(p => netease.playlist_track_all({ id: p.id, cookie })));
-        const allData = responses.map(r => r.body.songs);
+        // 2. 获取底库歌曲
+        const responses = await Promise.all(basePlaylistIds.map(id => netease.playlist_track_all({ id, cookie })));
+        const baseData = responses.map(r => shuffle([...(r.body.songs || [])])); // 每个底库内部随机
 
-        // 严格轮询合并
-        const targetMs = duration * 60 * 1000;
-        let result = [], currentMs = 0, usedIds = new Set();
-        // 内部洗牌
-        const randomized = allData.map(list => {
-            const arr = [...list];
-            for (let i = arr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
-            }
-            return arr;
+        // 3. 整理点歌池 (V2 逻辑)
+        // 把用户点的歌按舞种分类: { "慢三": [song1, song2], "平四": [] }
+        let requestPool = {};
+        DEFAULT_PLAYLISTS.forEach(p => requestPool[p.name] = []);
+        requestedSongs.forEach(s => {
+            if (requestPool[s.type]) requestPool[s.type].push(s);
         });
 
-        let pointers = new Array(randomized.length).fill(0), hasMore = true;
+        // 4. 混合编排
+        const targetMs = duration * 60 * 1000;
+        let result = [], currentMs = 0, usedIds = new Set();
+        let basePointers = new Array(baseData.length).fill(0);
+        let hasMore = true;
+
         while (currentMs < targetMs && hasMore) {
             hasMore = false;
-            for (let i = 0; i < randomized.length; i++) {
-                if (pointers[i] < randomized[i].length) {
+            for (let i = 0; i < DEFAULT_PLAYLISTS.length; i++) {
+                const typeName = DEFAULT_PLAYLISTS[i].name;
+                let song = null;
+
+                // 优先从点歌池取
+                if (requestPool[typeName] && requestPool[typeName].length > 0) {
+                    song = requestPool[typeName].shift();
                     hasMore = true;
-                    const song = randomized[i][pointers[i]++];
-                    if (!usedIds.has(song.id)) {
-                        result.push({
-                            id: song.id,
-                            name: song.name,
-                            ar: song.ar.map(a => a.name).join('/'),
-                            dt: song.dt,
-                            type: playlistConfigs[i].name // 记录舞种
-                        });
-                        usedIds.add(song.id);
-                        currentMs += (song.dt || 0);
-                    }
-                    if (currentMs >= targetMs) break;
+                } 
+                // 点歌池没了，从底库取
+                else if (basePointers[i] < baseData[i].length) {
+                    song = baseData[i][basePointers[i]++];
+                    hasMore = true;
                 }
+
+                if (song && !usedIds.has(song.id)) {
+                    result.push({
+                        id: song.id, name: song.name,
+                        ar: song.ar ? (Array.isArray(song.ar) ? song.ar.map(a => a.name).join('/') : song.ar) : "未知",
+                        dt: song.dt, type: typeName
+                    });
+                    usedIds.add(song.id);
+                    currentMs += (song.dt || 0);
+                }
+                if (currentMs >= targetMs) break;
             }
         }
 
         const trackIds = result.map(s => s.id).reverse().join(',');
-        const createRes = await netease.playlist_create({
-            name: `DanceTool_${new Date().toLocaleDateString()}`,
-            cookie
-        });
+        const createRes = await netease.playlist_create({ name: `DanceV2_${new Date().toLocaleDateString()}`, cookie });
         const newId = createRes.body.id;
         await netease.playlist_tracks({ op: 'add', pid: newId, tracks: trackIds, cookie });
         
         res.json({ success: true, count: result.length, playlistId: newId, songs: result });
     } catch (error) {
-        res.json({ success: false, message: '生成出错' });
+        console.error(error);
+        res.json({ success: false, message: '生成失败' });
     }
 });
 
-// 登录接口... (保持之前的逻辑)
 app.get('/api/login/key', async (req, res) => res.json((await netease.login_qr_key({})).body));
 app.get('/api/login/create', async (req, res) => res.json((await netease.login_qr_create({ key: req.query.key, qrimg: true })).body));
 app.get('/api/login/check', async (req, res) => res.json((await netease.login_qr_check({ key: req.query.key })).body));
 
-app.listen(process.env.PORT || 8080);
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => console.log(`V2 PRO Running`));

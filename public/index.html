@@ -15,9 +15,61 @@
         .section-label { font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         
         /* 列表展示 */
-        .song-row { display: grid; grid-template-columns: 35px 70px 1fr 140px 60px; gap: 10px; padding: 12px 0; border-bottom: 1px solid #F5F5F5; font-size: 13px; align-items: center; }
+        
+        /* .song-row { display: grid; grid-template-columns: 35px 70px 1fr 140px 60px; gap: 10px; padding: 12px 0; border-bottom: 1px solid #F5F5F5; font-size: 13px; align-items: center; }
         .song-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #888; }
+        .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #888; } */
+
+        /* 找到并替换原来的 .song-row 样式 */
+        .song-row { 
+            display: grid; 
+            grid-template-columns: 30px 65px 1fr 75px; /* 调整为4列：序号、舞种、信息区(歌名+歌手)、时长/操作 */
+            gap: 8px; 
+            padding: 10px 0; 
+            border-bottom: 1px solid #F5F5F5; 
+            font-size: 13px; 
+            align-items: center; 
+        }
+        
+        /* 歌曲信息容器：垂直排列 */
+        .song-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* 确保不溢出 */
+        }
+        
+        .song-name {
+            font-weight: 500;
+            color: #333;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .song-ar {
+            font-size: 11px;
+            color: #999;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-top: 2px;
+        }
+        
+        /* 右侧时长与删除按钮容器 */
+        .song-ops {
+            text-align: right;
+            display: flex;
+            flex-direction: column; /* 手机端时间放上面，删除放下面，或者并排 */
+            align-items: flex-end;
+            gap: 4px;
+        }
+        
+        @media (max-width: 480px) {
+            .song-row {
+                grid-template-columns: 25px 55px 1fr 65px; /* 移动端进一步微调间距 */
+                gap: 5px;
+            }
+        }
 
         input, select { width: 100%; border: none; border-bottom: 1px solid #eee; padding: 10px 0; margin-bottom: 15px; outline: none; background: transparent; }
         .btn { padding: 12px; border: none; cursor: pointer; border-radius: 4px; font-weight: 600; width: 100%; margin-bottom: 8px; font-size: 12px; }
@@ -385,20 +437,44 @@ function renderAll(songs) {
     }
         // 渲染列表项
     function renderListItems() {
-        const listContainer = document.getElementById('sortable-list');
-        listContainer.innerHTML = finalSongs.map((s, i) => `
-            <div class="song-row" data-id="${s.id}" style="cursor: grab; background: #fff;">
-                <span class="mono row-idx">${(i+1).toString().padStart(2,'0')}</span>
-                <span style="color:var(--gold); font-weight:600;">${s.type}</span>
-                <span style="font-weight:500;">${s.name}</span>
-                <span style="color:#888;">${s.ar}</span>
-                <div style="text-align:right; display:flex; align-items:center; justify-content:flex-end; gap:10px;">
-                    <span class="mono">${Math.floor(s.dt/60000)}:${Math.floor((s.dt%60000)/1000).toString().padStart(2,'0')}</span>
-                    <button onclick="removeSong(${s.id})" style="background:none; border:none; color:red; cursor:pointer; font-weight:bold;">×</button>
-                </div>
+    const listContainer = document.getElementById('sortable-list');
+    listContainer.innerHTML = finalSongs.map((s, i) => `
+        <div class="song-row" data-id="${s.id}" style="cursor: grab; background: #fff;">
+            <!-- 1. 序号 -->
+            <span class="mono row-idx">${(i+1).toString().padStart(2,'0')}</span>
+            
+            <!-- 2. 舞种 -->
+            <span style="color:var(--gold); font-weight:600; font-size:12px;">${s.type}</span>
+            
+            <!-- 3. 合并后的信息区：歌名 + 歌手 -->
+            <div class="song-info">
+                <span class="song-name">${s.name}</span>
+                <span class="song-ar">${s.ar}</span>
             </div>
-        `).join('');
-    }
+            
+            <!-- 4. 时长与删除按钮 -->
+            <div class="song-ops">
+                <span class="mono" style="font-size:11px;">${Math.floor(s.dt/60000)}:${Math.floor((s.dt%60000)/1000).toString().padStart(2,'0')}</span>
+                <button onclick="removeSong(${s.id})" style="background:none; border:none; color:#ff4d4f; cursor:pointer; font-size:16px; padding:0 5px;">×</button>
+            </div>
+        </div>
+    `).join('');
+}
+    // function renderListItems() {
+    //     const listContainer = document.getElementById('sortable-list');
+    //     listContainer.innerHTML = finalSongs.map((s, i) => `
+    //         <div class="song-row" data-id="${s.id}" style="cursor: grab; background: #fff;">
+    //             <span class="mono row-idx">${(i+1).toString().padStart(2,'0')}</span>
+    //             <span style="color:var(--gold); font-weight:600;">${s.type}</span>
+    //             <span style="font-weight:500;">${s.name}</span>
+    //             <span style="color:#888;">${s.ar}</span>
+    //             <div style="text-align:right; display:flex; align-items:center; justify-content:flex-end; gap:10px;">
+    //                 <span class="mono">${Math.floor(s.dt/60000)}:${Math.floor((s.dt%60000)/1000).toString().padStart(2,'0')}</span>
+    //                 <button onclick="removeSong(${s.id})" style="background:none; border:none; color:red; cursor:pointer; font-weight:bold;">×</button>
+    //             </div>
+    //         </div>
+    //     `).join('');
+    // }
     
     // 删除歌曲
     function removeSong(id) {

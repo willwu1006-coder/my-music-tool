@@ -31,7 +31,7 @@ const DEFAULT_PLAYLISTS = [
 
 const COLLECTIVE_CONFIG = [
     { id: '20953761', type: '集体恰恰' },
-    { id: '1827007005', type: '兔子舞' },
+    { id: '1827007005', type: '集体舞兔子舞' },
     { id: '349892', type: '集体舞16步' }
 ];
 
@@ -75,6 +75,27 @@ function shuffle(array) {
         [array[i], array[j]] = [array[j], array[i]];
     }
     return array;
+}
+
+// 改进后的概率抽样：增加排除项
+function pickTypeByWeight(weights, excludeType = null) {
+    // 过滤掉权重为 0 的舞种，以及上一次刚跳过的舞种
+    let entries = Object.entries(weights).filter(([type, w]) => w > 0 && type !== excludeType);
+    
+    // 保护逻辑：如果除了刚跳过的，其他都没歌了（entries为空），
+    // 那只能打破不连续规则，或者尝试重新把刚跳过的选回来（如果没有其他选择的话）
+    if (entries.length === 0) {
+        entries = Object.entries(weights).filter(([_, w]) => w > 0);
+        if (entries.length === 0) return null; // 真的全都没歌了
+    }
+
+    const totalWeight = entries.reduce((sum, [_, w]) => sum + w, 0);
+    let random = Math.random() * totalWeight;
+    for (const [type, weight] of entries) {
+        if (random < weight) return type;
+        random -= weight;
+    }
+    return entries[0][0];
 }
 
 // 【新】搜索接口
@@ -186,33 +207,95 @@ app.post('/api/calculate', async (req, res) => {
 
         const targetMs = duration * 60 * 1000;
         let result = [], currentMs = 0, usedIds = new Set(), basePointers = new Array(7).fill(0), hasMore = true;
+        let lastType = null;
 
         while (currentMs < targetMs && hasMore) {
             hasMore = false;
-            for (let i = 0; i < 7; i++) {
-                const typeName = DEFAULT_PLAYLISTS[i].name;
-                let song = null;
-                if (requestPool[typeName]?.length > 0) { song = requestPool[typeName].shift(); hasMore = true; }
-                else if (useDefaultFill && baseData[i][basePointers[i]]) {
-                    const raw = baseData[i][basePointers[i]++];
-                    song = { id: raw.id, name: raw.name, ar: formatArtists(raw), dt: raw.dt || raw.duration, type: typeName };
+            if (mode === 'weighted') {
+                // --- 权重随机模式（带保护） ---
+                // 传入 lastType 进行避让
+                const typeName = pickTypeByWeight(weights, lastType); 
+                if (!typeName) break;
+
+                let song = findSong(typeName);
+                if (song) {
+                    addSong(song);
+                    lastType = typeName; // 更新最后一次舞种
                     hasMore = true;
+
+                    // 集体舞逻辑（集体舞本身就起到了打断连续的作用）
+                    if (useDefaultFill && roundCounter >= 7 && collectivePool.length > 0 && currentMs < targetMs) {
+                        const col = collectivePool.shift();
+                        if (!usedIds.has(col.id)) { 
+                            addSong(col); 
+                            lastType = col.type; // 集体舞也作为 lastType
+                            roundCounter = 0; 
+                        }
+                    }
+                } else {
+                    weights[typeName] = 0; // 该舞种彻底没歌了
+                    hasMore = Object.values(weights).some(w => w > 0);
                 }
-                if (song && !usedIds.has(song.id)) { result.push(song); usedIds.add(song.id); currentMs += song.dt; }
-                if (currentMs >= targetMs) break;
-            }
-            // ---  插入一首集体舞 (分散编排：每轮结束后插一首) ---
-            if (useDefaultFill && collectivePool.length > 0 && currentMs < targetMs) {
-                const colSong = collectivePool.shift(); // 按顺序取出一首：恰恰 -> 兔子 -> 16步
-                if (!usedIds.has(colSong.id)) {
-                    result.push(colSong);
-                    usedIds.add(colSong.id);
-                    currentMs += colSong.dt;
-                    hasMore = true; 
+            } else {
+                // --- 严格顺序模式 ---
+                // 原有的顺序模式自然保证了不会连续（0-1-2-3-4-5-6循环）
+                for (let i = 0; i < 7; i++) {
+                    const typeName = DEFAULT_PLAYLISTS[i].name;
+                    let song = findSong(typeName);
+                    if (song) { addSong(song); hasMore = true; }
+                    if (currentMs >= targetMs) break;
+                }
+                if (useDefaultFill && collectivePool.length > 0 && currentMs < targetMs) {
+                    const col = collectivePool.shift();
+                    if (!usedIds.has(col.id)) { addSong(col); hasMore = true; }
                 }
             }
         }
-        
+        function findSong(typeName) {
+            if (requestPool[typeName]?.length > 0) return requestPool[typeName].shift();
+            if (useDefaultFill) {
+                const bIdx = DEFAULT_PLAYLISTS.findIndex(p => p.name === typeName);
+                if (bIdx !== -1 && baseData[bIdx][basePointers[typeName]]) {
+                    const raw = baseData[bIdx][basePointers[typeName]++];
+                    return { id: raw.id, name: raw.name, ar: formatArtists(raw), dt: raw.dt || raw.duration, type: typeName };
+                }
+            }
+            return null;
+        }
+
+        function addSong(song) {
+            if (song && !usedIds.has(song.id)) {
+                result.push(song);
+                usedIds.add(song.id);
+                currentMs += song.dt;
+                // 只有正规舞计入 roundCounter
+                if (!song.type.includes('集体')) roundCounter++;
+            }
+        }
+
+        //     for (let i = 0; i < 7; i++) {
+        //         const typeName = DEFAULT_PLAYLISTS[i].name;
+        //         let song = null;
+        //         if (requestPool[typeName]?.length > 0) { song = requestPool[typeName].shift(); hasMore = true; }
+        //         else if (useDefaultFill && baseData[i][basePointers[i]]) {
+        //             const raw = baseData[i][basePointers[i]++];
+        //             song = { id: raw.id, name: raw.name, ar: formatArtists(raw), dt: raw.dt || raw.duration, type: typeName };
+        //             hasMore = true;
+        //         }
+        //         if (song && !usedIds.has(song.id)) { result.push(song); usedIds.add(song.id); currentMs += song.dt; }
+        //         if (currentMs >= targetMs) break;
+        //     }
+        //     // ---  插入一首集体舞 (分散编排：每轮结束后插一首) ---
+        //     if (useDefaultFill && collectivePool.length > 0 && currentMs < targetMs) {
+        //         const colSong = collectivePool.shift(); // 按顺序取出一首：恰恰 -> 兔子 -> 16步
+        //         if (!usedIds.has(colSong.id)) {
+        //             result.push(colSong);
+        //             usedIds.add(colSong.id);
+        //             currentMs += colSong.dt;
+        //             hasMore = true; 
+        //         }
+        //     }
+        // }
         // const trackIds = result.map(s => s.id).reverse().join(',');
         // const createRes = await netease.playlist_create({ name: `舞会_${new Date().toLocaleDateString()}`, cookie });
         // if (createRes.body.code !== 200) throw new Error(createRes.body.msg || '创建歌单失败');

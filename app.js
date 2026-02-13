@@ -183,7 +183,7 @@ app.post('/api/auth/update-cookie', (req, res) => {
 // 核心生成接口
 app.post('/api/calculate', async (req, res) => {
     try {
-        let { duration, cookie, requestedSongs = [], useDefaultFill = true } = req.body;
+        let { duration, cookie, requestedSongs = [], useDefaultFill = true, mode = 'sequential', weights = {} } = req.body;
         if(!cookie) return res.json({ success: false, message: '未检测到网易云登录状态' });
 
         let collectivePool = [];

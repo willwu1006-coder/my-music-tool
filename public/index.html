@@ -62,7 +62,7 @@
 
     <!-- 2. 网易云连接 (必须) -->
     <div class="card">
-        <span class="section-label">1. NetEase Connectivity</span>
+        <span class="section-label">1. 网易云连接</span>
         <button class="btn btn-sub" id="l-btn" onclick="startLogin()">网易云扫码连接</button>
         <div id="qr-view" style="display:none; text-align:center; padding:10px;"><img id="qr-img" style="width:130px;"></div>
         
@@ -75,7 +75,7 @@
 
 <!-- 3. 数据源 -->
     <div class="card">
-        <span class="section-label">2. Select Music</span>
+        <span class="section-label">2. 选择音乐</span>
         
         <!-- 新增提示文字 -->
         <p style="font-size: 12px; color: #999; margin-top: -5px; margin-bottom: 15px; line-height: 1.6;">
@@ -104,6 +104,28 @@
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px; font-size:13px; color:#666;">
             <input type="checkbox" id="fill-toggle" checked style="width:auto; margin:0;">
             <label for="fill-toggle">时长不足时，自动从默认库抽取补全</label>
+        </div>
+        <!-- 模式切换 -->
+        <div style="display: flex; gap: 20px; margin-bottom: 20px; font-size: 13px;">
+            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                <input type="radio" name="gen-mode" value="sequential" checked style="width: auto; margin: 0;"> 严格循环模式
+            </label>
+            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                <input type="radio" name="gen-mode" value="weighted" style="width: auto; margin: 0;"> 权重随机模式
+            </label>
+        </div>
+    
+        <div id="weight-config-area" style="display: none; margin-bottom: 20px; padding: 15px; background: #fafafa; border-radius: 4px;">
+            <span style="font-size: 11px; color: var(--gold); font-weight: 700; display: block; margin-bottom: 10px;">舞种出现概率权重 (数字越大占比越高)</span>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;" id="weight-inputs">
+                <div><label style="font-size: 10px; color: #999;">慢三</label><input type="number" data-type="慢三" value="1" min="0" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
+                <div><label style="font-size: 10px; color: #999;">平四</label><input type="number" data-type="平四" value="1" min="0" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
+                <div><label style="font-size: 10px; color: #999;">伦巴</label><input type="number" data-type="伦巴" value="1" min="0" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
+                <div><label style="font-size: 10px; color: #999;">并四</label><input type="number" data-type="并四" value="1" min="0" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
+                <div><label style="font-size: 10px; color: #999;">快三</label><input type="number" data-type="快三" value="1" min="0" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
+                <div><label style="font-size: 10px; color: #999;">慢四</label><input type="number" data-type="慢四" value="1" min="0" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
+                <div><label style="font-size: 10px; color: #999;">吉特巴</label><input type="number" data-type="吉特巴" value="1" min="0" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
+            </div>
         </div>
         <input type="number" id="duration" placeholder="目标总时长 (分钟)">
         <button class="btn btn-main" id="g-btn" onclick="generate()" disabled>连接网易云后开始编排</button>
@@ -149,6 +171,7 @@
         const sec = document.getElementById('auth-section');
         sec.style.display = sec.style.display === 'none' ? 'block' : 'none';
     }
+    
 
     // 更新网易云状态标识
     function updateLoginStatus(source) {
@@ -291,16 +314,36 @@
         `).join('');
     }
 
-    // 生成
+    document.querySelectorAll('input[name="gen-mode"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        document.getElementById('weight-config-area').style.display = e.target.value === 'weighted' ? 'block' : 'none';
+    });
+    });
     async function generate() {
-        const dur = document.getElementById('duration').value, fill = document.getElementById('fill-toggle').checked, msg = document.getElementById('msg');
+        const dur = document.getElementById('duration').value;
+        const fill = document.getElementById('fill-toggle').checked;
+        const mode = document.querySelector('input[name="gen-mode"]:checked').value;
+        
+        const weights = {};
+        document.querySelectorAll('#weight-inputs input').forEach(el => {
+            weights[el.getAttribute('data-type')] = parseInt(el.value) || 0;
+        });
+        const msg = document.getElementById('msg');
+        
         if(!dur) return alert('请输入时长');
         msg.innerText = '正在计算编排序列...';
         try {
             const res = await fetch('/api/calculate', { 
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ duration: parseInt(dur), cookie: userCookie, requestedSongs: reqSongs, useDefaultFill: fill }) 
+                body: JSON.stringify({ 
+                    duration: parseInt(dur), 
+                    cookie: userCookie, 
+                    requestedSongs: reqSongs, 
+                    useDefaultFill: fill,
+                    mode: mode, 
+                    weights: weights 
+                }) 
             });
             const data = await res.json();
             if(data.success) { 

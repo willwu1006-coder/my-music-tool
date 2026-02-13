@@ -165,21 +165,14 @@ app.post('/api/calculate', async (req, res) => {
         let { duration, cookie, requestedSongs = [], useDefaultFill = true } = req.body;
         if(!cookie) return res.json({ success: false, message: '未检测到网易云登录状态' });
 
-        //  获取这三首特定集体舞的详情
-        const colIds = COLLECTIVE_CONFIG.map(c => c.id).join(',');
-        const colRes = await netease.song_detail({ ids: colIds, cookie });
-        
-        // 将获取到的歌曲数据与你的命名匹配
-        let collectivePool = (colRes.body.songs || []).map(s => {
-            const cfg = COLLECTIVE_CONFIG.find(c => c.id == s.id);
-            return {
-                id: s.id,
-                name: s.name,
-                ar: formatArtists(s),
-                dt: s.dt || s.duration,
-                type: cfg ? cfg.type : '集体舞' // 使用你指定的名字
-            };
-        });
+        let collectivePool = [];
+        if (useDefaultFill) {
+            const colRes = await netease.song_detail({ ids: COLLECTIVE_CONFIG.map(c => c.id).join(','), cookie, realIP: getIp(req) });
+            collectivePool = (colRes.body.songs || []).map(s => {
+                const cfg = COLLECTIVE_CONFIG.find(c => c.id == s.id);
+                return { id: s.id, name: s.name, ar: formatArtists(s), dt: s.dt || s.duration, type: cfg.type };
+            });
+        }
 
         let requestPool = {};
         DEFAULT_PLAYLISTS.forEach(p => requestPool[p.name] = []);
@@ -209,7 +202,7 @@ app.post('/api/calculate', async (req, res) => {
                 if (currentMs >= targetMs) break;
             }
             // ---  插入一首集体舞 (分散编排：每轮结束后插一首) ---
-            if (collectivePool.length > 0 && currentMs < targetMs) {
+            if (useDefaultFill && collectivePool.length > 0 && currentMs < targetMs) {
                 const colSong = collectivePool.shift(); // 按顺序取出一首：恰恰 -> 兔子 -> 16步
                 if (!usedIds.has(colSong.id)) {
                     result.push(colSong);
@@ -220,7 +213,6 @@ app.post('/api/calculate', async (req, res) => {
             }
         }
         
-
         // const trackIds = result.map(s => s.id).reverse().join(',');
         // const createRes = await netease.playlist_create({ name: `舞会_${new Date().toLocaleDateString()}`, cookie });
         // if (createRes.body.code !== 200) throw new Error(createRes.body.msg || '创建歌单失败');
@@ -242,8 +234,12 @@ app.post('/api/sync', async (req, res) => {
         // 正序取 ID，然后 reverse，保持你原来的逻辑
         const trackIds = songs.map(s => s.id).reverse().join(',');
         
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`;
+        const playlistName = `舞会_${dateStr}`; 
+        
         const createRes = await netease.playlist_create({ 
-            name: `自定义舞曲_${new Date().toLocaleDateString()}`, 
+            name: playlistName, 
             cookie 
         });
         

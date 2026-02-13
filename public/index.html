@@ -34,6 +34,13 @@
         
         .sortable-ghost { opacity: 0.3; background: #e6f7ff; border: 1px dashed var(--gold); }
         .song-row:active { cursor: grabbing; }
+
+        .sortable-chosen {
+            background-color: #f0f7ff !important;
+            border: 1px solid var(--gold);
+            transform: scale(0.98); /* 稍微缩小一点，给用户按压感 */
+            transition: transform 0.2s;
+        }
     </style>
 </head>
 <body>
@@ -358,6 +365,11 @@ function renderAll(songs) {
         window.sortableInstance = new Sortable(listContainer, {
             animation: 150,
             ghostClass: 'sortable-ghost',
+            // --- 重点优化移动端体验的配置 ---
+            delay: 400,            // 必须长按 400 毫秒（0.4秒）才开始拖拽
+            delayOnTouchOnly: true, // 只在触摸屏上开启延迟，鼠标操作不需要延迟
+            touchStartThreshold: 5, // 允许手指在长按时有 5 像素以内的轻微晃动（防止长按太死板）
+            // ----------------------------
             onEnd: function() {
                 const newOrder = [];
                 listContainer.querySelectorAll('.song-row').forEach(el => {

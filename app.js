@@ -9,7 +9,8 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // 初始化数据库
-const USER_DB = process.env.PERSISTENT_PATH ? `${process.env.PERSISTENT_PATH}/users.json` : './users.json';
+const DB_DIR = process.env.PERSISTENT_PATH || '.';
+const USER_DB = path.join(DB_DIR, 'users.json');
 const getIp = (req) => req.headers['x-real-ip'] || req.ip || '116.228.89.233';
 
 // 辅助函数：读写用户数据
@@ -258,12 +259,6 @@ app.post('/api/sync', async (req, res) => {
 app.get('/api/login/key', async (req, res) => res.json((await netease.login_qr_key({ realIP: '116.228.89.233' })).body));
 app.get('/api/login/create', async (req, res) => res.json((await netease.login_qr_create({ key: req.query.key, qrimg: true, realIP: '116.228.89.233' })).body));
 app.get('/api/login/check', async (req, res) => res.json((await netease.login_qr_check({ key: req.query.key, realIP: '116.228.89.233' })).body));
-app.get('/api/playlist/info', async (req, res) => {
-    try {
-        const result = await netease.playlist_track_all({ id: req.query.id, cookie: req.query.cookie });
-        res.json({ success: true, songs: result.body.songs.map(s => ({ id: s.id, name: s.name, ar: formatArtists(s), dt: s.dt || s.duration })) });
-    } catch(e) { res.json({ success: false }); }
-});
 app.get('/api/search', async (req, res) => {
     try {
         const result = await netease.cloudsearch({ keywords: req.query.keywords, limit: 15 });

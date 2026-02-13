@@ -31,6 +31,9 @@
         /* 账号小模块 */
         .account-mini { font-size: 12px; color: #999; text-align: right; margin-bottom: 10px; }
         .account-mini a { color: var(--gold); cursor: pointer; text-decoration: underline; }
+        
+        .sortable-ghost { opacity: 0.3; background: #e6f7ff; border: 1px dashed var(--gold); }
+        .song-row:active { cursor: grabbing; }
     </style>
 </head>
 <body>
@@ -139,7 +142,7 @@
 
 
 <script>
-    let userCookie = "", currentUsername = "", stagedSongs = [], reqSongs = [];
+    let userCookie = "", currentUsername = "", stagedSongs = [], reqSongs = [], finalSongs = [];
     const styles = ["慢三", "平四", "伦巴", "并四", "快三", "慢四", "吉特巴"];
 
     function toggleAuth() {
@@ -292,42 +295,47 @@
     async function generate() {
         const dur = document.getElementById('duration').value, fill = document.getElementById('fill-toggle').checked, msg = document.getElementById('msg');
         if(!dur) return alert('请输入时长');
-        msg.innerText = '正在排歌并创建歌单...';
+        msg.innerText = '正在计算编排序列...';
         try {
-            const res = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ duration: parseInt(dur), cookie: userCookie, requestedSongs: reqSongs, useDefaultFill: fill }) });
+            const res = await fetch('/api/calculate', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ duration: parseInt(dur), cookie: userCookie, requestedSongs: reqSongs, useDefaultFill: fill }) 
+            });
             const data = await res.json();
-            if(data.success) { renderAll(data.songs); msg.innerText = '生成成功！歌单已存入网易云。'; }
+            if(data.success) { 
+                renderAll(data.songs); 
+                msg.innerText = '序列计算完成，请在下方手动调整。'; 
+            }
             else msg.innerText = '失败：' + data.message;
         } catch(e) { msg.innerText = '服务器错误'; }
     }
 
-    function renderAll(songs) {
-    finalSongs = songs; // 记录初始计算结果
-    const listContainer = document.getElementById('sortable-list');
-    const webPreview = document.getElementById('web-preview');
-    
-    webPreview.style.display = 'block';
-    renderListItems(); // 执行渲染
+function renderAll(songs) {
+        finalSongs = songs; 
+        const listContainer = document.getElementById('sortable-list');
+        const webPreview = document.getElementById('web-preview');
+        webPreview.style.display = 'block';
+        renderListItems();
 
-    // 初始化拖拽
-    new Sortable(listContainer, {
-        animation: 150,
-        ghostClass: 'sortable-ghost',
-        onEnd: function() {
-            // 拖拽结束时，根据 DOM 顺序重新更新 finalSongs 数组
-            const newOrder = [];
-            listContainer.querySelectorAll('.song-row').forEach(el => {
-                const id = el.getAttribute('data-id');
-                const song = finalSongs.find(s => s.id == id);
-                newOrder.push(song);
-            });
-            finalSongs = newOrder;
-            updateIndices(); // 更新显示的序号
-        }
-    });
-    
-    window.scrollTo({ top: webPreview.offsetTop - 20, behavior: 'smooth' });
-}
+        // 修正点 3：初始化拖拽库
+        if(window.sortableInstance) window.sortableInstance.destroy(); // 防止重复初始化
+        window.sortableInstance = new Sortable(listContainer, {
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: function() {
+                const newOrder = [];
+                listContainer.querySelectorAll('.song-row').forEach(el => {
+                    const id = el.getAttribute('data-id');
+                    const song = finalSongs.find(s => s.id == id);
+                    if(song) newOrder.push(song);
+                });
+                finalSongs = newOrder;
+                updateIndices();
+            }
+        });
+        window.scrollTo({ top: webPreview.offsetTop - 20, behavior: 'smooth' });
+    }
         // 渲染列表项
     function renderListItems() {
         const listContainer = document.getElementById('sortable-list');

@@ -27,6 +27,12 @@ const DEFAULT_PLAYLISTS = [
     { name: "吉特巴", id: "8425582396" }
 ];
 
+const COLLECTIVE_CONFIG = [
+    { id: '20953761', type: '集体恰恰' },
+    { id: '1827007005', type: '兔子舞' },
+    { id: '349892', type: '集体舞16步' }
+];
+
 async function getRealId(input) {
     let str = input.trim();
     if (!str) return null;
@@ -157,6 +163,22 @@ app.post('/api/generate', async (req, res) => {
         let { duration, cookie, requestedSongs = [], useDefaultFill = true } = req.body;
         if(!cookie) return res.json({ success: false, message: '未检测到网易云登录状态' });
 
+        //  获取这三首特定集体舞的详情
+        const colIds = COLLECTIVE_CONFIG.map(c => c.id).join(',');
+        const colRes = await netease.song_detail({ ids: colIds, cookie });
+        
+        // 将获取到的歌曲数据与你的命名匹配
+        let collectivePool = (colRes.body.songs || []).map(s => {
+            const cfg = COLLECTIVE_CONFIG.find(c => c.id == s.id);
+            return {
+                id: s.id,
+                name: s.name,
+                ar: formatArtists(s),
+                dt: s.dt || s.duration,
+                type: cfg ? cfg.type : '集体舞' // 使用你指定的名字
+            };
+        });
+
         let requestPool = {};
         DEFAULT_PLAYLISTS.forEach(p => requestPool[p.name] = []);
         requestedSongs.forEach(s => { if (requestPool[s.type]) requestPool[s.type].push(s); });
@@ -184,10 +206,21 @@ app.post('/api/generate', async (req, res) => {
                 if (song && !usedIds.has(song.id)) { result.push(song); usedIds.add(song.id); currentMs += song.dt; }
                 if (currentMs >= targetMs) break;
             }
+            // ---  插入一首集体舞 (分散编排：每轮结束后插一首) ---
+            if (collectivePool.length > 0 && currentMs < targetMs) {
+                const colSong = collectivePool.shift(); // 按顺序取出一首：恰恰 -> 兔子 -> 16步
+                if (!usedIds.has(colSong.id)) {
+                    result.push(colSong);
+                    usedIds.add(colSong.id);
+                    currentMs += colSong.dt;
+                    hasMore = true; 
+                }
+            }
+        }
         }
 
         const trackIds = result.map(s => s.id).reverse().join(',');
-        const createRes = await netease.playlist_create({ name: `DanceV3_${new Date().toLocaleDateString()}`, cookie });
+        const createRes = await netease.playlist_create({ name: `舞会_${new Date().toLocaleDateString()}`, cookie });
         if (createRes.body.code !== 200) throw new Error(createRes.body.msg || '创建歌单失败');
         
         const newId = createRes.body.id;

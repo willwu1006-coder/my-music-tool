@@ -3,6 +3,7 @@ const axios = require('axios');
 const netease = require('NeteaseCloudMusicApi');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
+const path = require('path');
 
 const app = express();
 app.use(express.json());

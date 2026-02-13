@@ -206,8 +206,14 @@ app.post('/api/calculate', async (req, res) => {
         }
 
         const targetMs = duration * 60 * 1000;
-        let result = [], currentMs = 0, usedIds = new Set(), basePointers = new Array(7).fill(0), hasMore = true;
+        let result = [], currentMs = 0, usedIds = new Set();
+        
+        let basePointers = {}; 
+        DEFAULT_PLAYLISTS.forEach(p => basePointers[p.name] = 0);
+        
+        let roundCounter = 0; 
         let lastType = null;
+        let hasMore = true;
 
         while (currentMs < targetMs && hasMore) {
             hasMore = false;

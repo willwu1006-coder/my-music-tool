@@ -136,12 +136,12 @@
         <!-- 标题和下载海报的按钮（保留你原来的美化样式） -->
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid var(--accent); padding-bottom:8px; margin-bottom:20px;">
             <h2 style="margin:0; font-family:'Playfair Display'; font-size:24px; color:var(--accent);">Setlist Preview</h2>
-            <button onclick="downloadPoster()" style="font-size:11px; border:1px solid var(--gold); background:none; color:var(--gold); padding:4px 10px; cursor:pointer;">[ 导出图片海报 ]</button>
+            <button onclick="downloadPoster()" style="font-size:11px; border:1px solid var(--gold); background:none; color:var(--gold); padding:4px 10px; cursor:pointer;">[ 导出歌单海报 ]</button>
         </div>
 
         <!-- 拖拽操作提示框 -->
         <div style="background: #fffbe6; padding: 12px; font-size: 12px; color: #856404; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ffe58f;">
-            💡 <b>操作指南：</b>按住歌曲可<b>上下拖拽</b>调整顺序，点击右侧 <b>×</b> 可移除单曲。调整满意后，请点击最下方的“确认同步”。
+            💡 <b>操作指南：</b>按住歌曲可<b>上下拖拽</b>调整顺序，点击右侧 <b>×</b> 可移除单曲。调整满意后，请点击最下方的“生成歌单”。
         </div>
 
         <!-- 排序列表容器 -->
@@ -149,7 +149,7 @@
 
         <!-- 确认同步按钮 -->
         <div style="margin-top: 30px; text-align: center;">
-            <button class="btn btn-main" id="sync-btn" onclick="finalSync()" style="box-shadow: 0 4px 15px rgba(26, 58, 95, 0.3);">确认顺序：同步到网易云</button>
+            <button class="btn btn-main" id="sync-btn" onclick="finalSync()" style="box-shadow: 0 4px 15px rgba(26, 58, 95, 0.3);">确认顺序：生成歌单到网易云</button>
             <p style="font-size: 11px; color: #999; margin-top: 10px;">* 同步成功后，歌单将出现在您的网易云App中，海报也将同步更新。</p>
         </div>
     </div>

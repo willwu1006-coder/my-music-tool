@@ -166,6 +166,17 @@
 <script>
     let userCookie = "", currentUsername = "", stagedSongs = [], reqSongs = [], finalSongs = [];
     const styles = ["慢三", "平四", "伦巴", "并四", "快三", "慢四", "吉特巴"];
+    let timer = null; // 声明定时器变量
+    
+     // 【新增/补全】监听模式切换，显示或隐藏权重配置区
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('input[name="gen-mode"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const area = document.getElementById('weight-config-area');
+                area.style.display = e.target.value === 'weighted' ? 'block' : 'none';
+            });
+        });
+    });
 
     function toggleAuth() {
         const sec = document.getElementById('auth-section');
@@ -229,30 +240,15 @@
             }
         }, 3000);
     }
-
+    
     function setManualCookie() {
         let ck = document.getElementById('manual-cookie').value.trim();
         if(!ck) return alert('请输入 Cookie');
-    
-        // 情况 A：如果你粘贴的是整段 document.cookie (推荐)
-        // 包含 MUSIC_U=xxx; __csrf=xxx; 的格式，直接使用即可
-        if (ck.includes('MUSIC_U=')) {
-            userCookie = ck;
-        } 
-        // 情况 B：如果你只粘贴了 MUSIC_U 的那一串 xxx 值
-        else {
-            // 我们帮它补齐格式。注意：这样可能缺少 __csrf，导致创建歌单失败
-            userCookie = `MUSIC_U=${ck};`; 
-            console.warn('检测到简易模式 Cookie，如果创建歌单失败，请粘贴完整 document.cookie');
-        }
-    
-        document.getElementById('g-btn').disabled = false;
-        document.getElementById('g-btn').innerText = 'Ready (Using Manual Cookie)';
-        document.getElementById('l-btn').innerText = 'Authenticated (Manual)';
-        document.getElementById('l-btn').style.color = 'green';
+        userCookie = ck.includes('MUSIC_U=') ? ck : `MUSIC_U=${ck};`;
+        updateLoginStatus('手动粘贴');
+        syncCookie();
         alert('Cookie 设置成功！');
     }
-
     // 数据操作
     async function searchSong() {
         const kw = document.getElementById('search-in').value;
@@ -314,15 +310,11 @@
         `).join('');
     }
 
-    document.querySelectorAll('input[name="gen-mode"]').forEach(radio => {
-    radio.addEventListener('change', (e) => {
-        document.getElementById('weight-config-area').style.display = e.target.value === 'weighted' ? 'block' : 'none';
-    });
-    });
     async function generate() {
         const dur = document.getElementById('duration').value;
         const fill = document.getElementById('fill-toggle').checked;
-        const mode = document.querySelector('input[name="gen-mode"]:checked').value;
+        const modeEl = document.querySelector('input[name="gen-mode"]:checked');
+        const mode = modeEl ? modeEl.value : 'sequential'; // 默认顺序模式
         
         const weights = {};
         document.querySelectorAll('#weight-inputs input').forEach(el => {
@@ -400,6 +392,7 @@ function renderAll(songs) {
     function removeSong(id) {
         finalSongs = finalSongs.filter(s => s.id != id);
         renderListItems();
+        updateIndices();
     }
     
     // 更新界面上的序号 (01, 02, 03...)

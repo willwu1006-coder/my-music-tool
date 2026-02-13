@@ -158,7 +158,7 @@ app.post('/api/auth/update-cookie', (req, res) => {
 
 
 // 核心生成接口
-app.post('/api/generate', async (req, res) => {
+app.post('/api/calculate', async (req, res) => {
     try {
         let { duration, cookie, requestedSongs = [], useDefaultFill = true } = req.body;
         if(!cookie) return res.json({ success: false, message: '未检测到网易云登录状态' });
@@ -219,15 +219,38 @@ app.post('/api/generate', async (req, res) => {
         }
         }
 
-        const trackIds = result.map(s => s.id).reverse().join(',');
-        const createRes = await netease.playlist_create({ name: `舞会_${new Date().toLocaleDateString()}`, cookie });
-        if (createRes.body.code !== 200) throw new Error(createRes.body.msg || '创建歌单失败');
+        // const trackIds = result.map(s => s.id).reverse().join(',');
+        // const createRes = await netease.playlist_create({ name: `舞会_${new Date().toLocaleDateString()}`, cookie });
+        // if (createRes.body.code !== 200) throw new Error(createRes.body.msg || '创建歌单失败');
+        
+        // const newId = createRes.body.id;
+        // await netease.playlist_tracks({ op: 'add', pid: newId, tracks: trackIds, cookie });
+        // res.json({ success: true, songs: result, playlistId: newId });
+        res.json({ success: true, songs: result });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/api/sync', async (req, res) => {
+    try {
+        const { songs, cookie } = req.body;
+        if (!songs || songs.length === 0) throw new Error('歌曲列表为空');
+
+        // 正序取 ID，然后 reverse，保持你原来的逻辑
+        const trackIds = songs.map(s => s.id).reverse().join(',');
+        
+        const createRes = await netease.playlist_create({ 
+            name: `自定义舞曲_${new Date().toLocaleDateString()}`, 
+            cookie 
+        });
         
         const newId = createRes.body.id;
         await netease.playlist_tracks({ op: 'add', pid: newId, tracks: trackIds, cookie });
-        res.json({ success: true, songs: result, playlistId: newId });
+        
+        res.json({ success: true, playlistId: newId });
     } catch (e) {
-        res.json({ success: false, message: e.message || '未知错误' });
+        res.json({ success: false, message: e.message });
     }
 });
 

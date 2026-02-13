@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dance Music Tool V3</title>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;600&family=JetBrains+Mono&display=swap');
         :root { --accent: #1A3A5F; --gold: #C5A059; --bg: #FDFCF8; }
@@ -96,7 +97,7 @@
 
     <!-- 4. 配置生成 -->
     <div class="card">
-        <span class="section-label">3. Generate Configuration</span>
+        <span class="section-label">3. 生成歌单</span>
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px; font-size:13px; color:#666;">
             <input type="checkbox" id="fill-toggle" checked style="width:auto; margin:0;">
             <label for="fill-toggle">时长不足时，自动从默认库抽取补全</label>
@@ -106,21 +107,36 @@
         <div id="msg" style="text-align:center; font-size:12px; color:#999; margin-top:10px;"></div>
     </div>
 
-    <!-- 5. 预览 -->
-    <div id="web-preview" style="display:none; width:100%; margin-top:20px;">
+   <div id="web-preview" style="display:none; width:100%; margin-top:40px;">
+        <!-- 标题和下载海报的按钮（保留你原来的美化样式） -->
         <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid var(--accent); padding-bottom:8px; margin-bottom:20px;">
-            <h2 style="margin:0; font-family:'Playfair Display'; font-size:24px; color:var(--accent);">Preview List</h2>
+            <h2 style="margin:0; font-family:'Playfair Display'; font-size:24px; color:var(--accent);">Setlist Preview</h2>
             <button onclick="downloadPoster()" style="font-size:11px; border:1px solid var(--gold); background:none; color:var(--gold); padding:4px 10px; cursor:pointer;">[ 导出图片海报 ]</button>
         </div>
-        <div id="preview-list"></div>
+
+        <!-- 拖拽操作提示框 -->
+        <div style="background: #fffbe6; padding: 12px; font-size: 12px; color: #856404; margin-bottom: 15px; border-radius: 4px; border: 1px solid #ffe58f;">
+            💡 <b>操作指南：</b>按住歌曲可<b>上下拖拽</b>调整顺序，点击右侧 <b>×</b> 可移除单曲。调整满意后，请点击最下方的“确认同步”。
+        </div>
+
+        <!-- 排序列表容器 -->
+        <div id="sortable-list"></div> 
+
+        <!-- 确认同步按钮 -->
+        <div style="margin-top: 30px; text-align: center;">
+            <button class="btn btn-main" id="sync-btn" onclick="finalSync()" style="box-shadow: 0 4px 15px rgba(26, 58, 95, 0.3);">确认顺序：同步到网易云</button>
+            <p style="font-size: 11px; color: #999; margin-top: 10px;">* 同步成功后，歌单将出现在您的网易云App中，海报也将同步更新。</p>
+        </div>
     </div>
-</div>
+
+</div> 
 
 <div id="poster-wrap" style="position:absolute; left:-9999px; width:600px; background:#fff; padding:60px;">
     <h1 style="text-align:center; font-family:'Playfair Display'; font-size:45px; color:var(--accent); margin:0;">Setlist</h1>
     <p id="p-date" style="text-align:center; color:var(--gold); letter-spacing:4px; font-size:12px; margin-bottom:40px;"></p>
     <div id="p-container"></div>
 </div>
+
 
 <script>
     let userCookie = "", currentUsername = "", stagedSongs = [], reqSongs = [];
@@ -286,17 +302,106 @@
     }
 
     function renderAll(songs) {
-        const web = document.getElementById('preview-list'), p = document.getElementById('p-container');
-        web.innerHTML = ''; p.innerHTML = '';
-        songs.forEach((s, i) => {
-            const timeStr = Math.floor(s.dt/60000) + ":" + Math.floor((s.dt%60000)/1000).toString().padStart(2,'0');
-            web.innerHTML += `<div class="song-row"><span class="mono">${(i+1).toString().padStart(2,'0')}</span><span style="color:var(--gold); font-weight:600;">${s.type}</span><span>${s.name}</span><span>${s.ar}</span><span class="mono" style="text-align:right;">${timeStr}</span></div>`;
-            p.innerHTML += `<div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #eee; font-size:14px;"><span style="width:70px; color:var(--gold); font-weight:bold;">${s.type}</span><span style="flex:1;">${s.name} <small style="color:#999">/ ${s.ar}</small></span><span style="width:50px; text-align:right;">${timeStr}</span></div>`;
-        });
-        document.getElementById('web-preview').style.display = 'block';
-        document.getElementById('p-date').innerText = new Date().toLocaleDateString();
-        window.scrollTo({ top: document.getElementById('web-preview').offsetTop, behavior: 'smooth' });
+    finalSongs = songs; // 记录初始计算结果
+    const listContainer = document.getElementById('sortable-list');
+    const webPreview = document.getElementById('web-preview');
+    
+    webPreview.style.display = 'block';
+    renderListItems(); // 执行渲染
+
+    // 初始化拖拽
+    new Sortable(listContainer, {
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        onEnd: function() {
+            // 拖拽结束时，根据 DOM 顺序重新更新 finalSongs 数组
+            const newOrder = [];
+            listContainer.querySelectorAll('.song-row').forEach(el => {
+                const id = el.getAttribute('data-id');
+                const song = finalSongs.find(s => s.id == id);
+                newOrder.push(song);
+            });
+            finalSongs = newOrder;
+            updateIndices(); // 更新显示的序号
+        }
+    });
+    
+    window.scrollTo({ top: webPreview.offsetTop - 20, behavior: 'smooth' });
+}
+        // 渲染列表项
+    function renderListItems() {
+        const listContainer = document.getElementById('sortable-list');
+        listContainer.innerHTML = finalSongs.map((s, i) => `
+            <div class="song-row" data-id="${s.id}" style="cursor: grab; background: #fff;">
+                <span class="mono row-idx">${(i+1).toString().padStart(2,'0')}</span>
+                <span style="color:var(--gold); font-weight:600;">${s.type}</span>
+                <span style="font-weight:500;">${s.name}</span>
+                <span style="color:#888;">${s.ar}</span>
+                <div style="text-align:right; display:flex; align-items:center; justify-content:flex-end; gap:10px;">
+                    <span class="mono">${Math.floor(s.dt/60000)}:${Math.floor((s.dt%60000)/1000).toString().padStart(2,'0')}</span>
+                    <button onclick="removeSong(${s.id})" style="background:none; border:none; color:red; cursor:pointer; font-weight:bold;">×</button>
+                </div>
+            </div>
+        `).join('');
     }
+    
+    // 删除歌曲
+    function removeSong(id) {
+        finalSongs = finalSongs.filter(s => s.id != id);
+        renderListItems();
+    }
+    
+    // 更新界面上的序号 (01, 02, 03...)
+    function updateIndices() {
+        document.querySelectorAll('.row-idx').forEach((el, i) => {
+            el.innerText = (i + 1).toString().padStart(2, '0');
+        });
+    }
+    async function finalSync() {
+    const btn = document.getElementById('sync-btn');
+    btn.disabled = true;
+    btn.innerText = '正在同步至网易云...';
+
+    try {
+        const res = await fetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                songs: finalSongs, // 发送前端调整后的最终数组
+                cookie: userCookie 
+            })
+        });
+        const data = await res.json();
+        if(data.success) {
+            alert('歌单同步成功！');
+            // 同步成功后，再生成海报数据
+            renderPosterContent();
+            btn.innerText = '同步成功！已更新海报数据';
+        } else {
+            alert('失败：' + data.message);
+            btn.disabled = false;
+        }
+    } catch(e) {
+        alert('网络错误');
+        btn.disabled = false;
+    }
+}
+
+    // 专门给海报渲染的函数
+    function renderPosterContent() {
+        const p = document.getElementById('p-container');
+        p.innerHTML = '';
+        finalSongs.forEach((s) => {
+            const timeStr = Math.floor(s.dt/60000) + ":" + Math.floor((s.dt%60000)/1000).toString().padStart(2,'0');
+            p.innerHTML += `
+                <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #eee; font-size:14px;">
+                    <span style="width:70px; color:var(--gold); font-weight:bold;">${s.type}</span>
+                    <span style="flex:1;">${s.name} <small style="color:#999">/ ${s.ar}</small></span>
+                    <span style="width:50px; text-align:right; font-family:monospace;">${timeStr}</span>
+                </div>`;
+        });
+        document.getElementById('p-date').innerText = new Date().toLocaleDateString();
+}
 
     function downloadPoster() {
         html2canvas(document.getElementById('poster-wrap'), { scale: 2 }).then(c => {

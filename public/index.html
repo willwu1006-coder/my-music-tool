@@ -157,35 +157,46 @@
         <div id="my-requests" style="margin-top:15px;"></div>
     </div>
 
-        <!-- 协作大厅卡片 -->
+           <!-- 协作大厅卡片 -->
     <div class="card" id="collab-card" style="display:none; border: 1px solid var(--accent);">
-        <span class="section-label" style="background: var(--accent); color: #fff; padding: 2px 8px; border-radius: 4px;">共享协作大厅</span>
+        <!-- 头部：标题与编辑 -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <span class="section-label" style="margin:0; background:var(--accent); color:#fff; padding:2px 8px; border-radius:4px;">协作大厅</span>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="room-name-input" placeholder="重命名歌单..." style="font-size:12px; padding:2px; margin:0; width:100px; border-bottom:1px solid var(--gold);">
+                <button onclick="updateRoomName()" style="font-size:10px; background:var(--gold); border:none; color:#fff; padding:2px 5px; cursor:pointer; border-radius:2px;">保存</button>
+            </div>
+        </div>
+    
+        <!-- 动态显示的歌单标题 -->
+        <h3 id="display-room-title" style="margin: 5px 0 15px 0; font-family:'Playfair Display'; color:var(--accent); text-align:center; font-size: 20px;">未命名共享歌单</h3>
         
-        <div id="room-info-box" style="margin-top: 15px;">
+        <!-- 房号与分享链接区域 -->
+        <div id="room-info-box" style="margin-top: 15px; margin-bottom: 20px;">
             <div style="background: #f0f7ff; padding: 12px; border-radius: 6px;">
                 <div style="font-size: 11px; color: var(--accent); font-weight: 700;">协作房间号: <span id="display-room-id" style="font-size: 16px; color: var(--gold);"></span></div>
                 
-                <div style="margin-top: 10px;">
-                    <div style="font-size: 11px; color: #999;">分享此链接邀请舞友点歌：</div>
+                <div style="margin-top: 8px;">
+                    <div style="font-size: 10px; color: #999;">分享此链接邀请舞友点歌：</div>
                     <div style="display: flex; gap: 5px; margin-top: 5px;">
-                        <input type="text" id="share-link-input" readonly onclick="this.select()" style="font-size: 10px; padding: 5px; margin: 0; background: #fff; border: 1px solid #ddd;">
+                        <input type="text" id="share-link-input" readonly onclick="this.select()" style="font-size: 10px; padding: 5px; margin: 0; background: #fff; border: 1px solid #ddd; flex: 1;">
                         <button onclick="copyShareLink()" style="background: var(--gold); border: none; color: #fff; font-size: 10px; padding: 0 10px; cursor: pointer; border-radius: 4px; white-space: nowrap;">复制</button>
                     </div>
                 </div>
             </div>
         </div>
     
-        <div style="margin-top: 15px;">
-            <div style="font-size: 11px; color: #999; margin-bottom: 8px;">协作清单（实时更新）：</div>
-            <div id="room-songs-list" style="max-height: 180px; overflow-y: auto; background: #fafafa; border: 1px solid #eee; border-radius: 4px; padding: 8px;">
-                <!-- 协作歌曲动态加载 -->
-            </div>
+        <!-- 协作歌曲清单（带点赞排序） -->
+        <span class="section-label" style="font-size:10px; border:none; margin-bottom:10px;">协作清单 (按点赞数实时排序)</span>
+        <div id="room-songs-list" style="max-height:280px; overflow-y:auto; background:#fafafa; border-radius:4px; padding:10px; border: 1px solid #eee;">
+            <!-- 这里将被 JavaScript 动态填充 -->
+            <div style="color:#ccc; text-align:center; font-size:12px;">加载中...</div>
         </div>
     </div>
     
-    <!-- 在账号模块里增加“发起协作”按钮 -->
-    <div id="create-room-box" style="margin-top: 10px; text-align: right; display: none;">
-        <button class="btn btn-sub" style="width: auto; font-size: 11px; padding: 5px 15px;" onclick="createRoom()">+ 发起共享协作</button>
+    <!-- “发起协作”按钮容器：独立于卡片之外 -->
+    <div id="create-room-box" style="margin-top: 10px; text-align: right; display: none; width: 100%; max-width: 650px;">
+        <button class="btn btn-sub" style="width: auto; font-size: 11px; padding: 5px 15px; border-color: var(--gold); color: var(--gold);" onclick="createRoom()">+ 发起新的共享协作房间</button>
     </div>
 
     <!-- 4. 配置生成 -->
@@ -306,27 +317,64 @@
         setInterval(refreshRoomInfo, 5000);
         refreshRoomInfo();
     }
+    // 修改房间名
+async function updateRoomName() {
+    const name = document.getElementById('room-name-input').value;
+    if(!name) return;
+    await fetch('/api/room/update-name', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId: activeRoomId, name })
+    });
+    refreshRoomInfo();
+}
 
-    async function refreshRoomInfo() {
-        if (!activeRoomId) return;
-        try {
-            const res = await fetch(`/api/room/info?roomId=${activeRoomId}`);
-            const data = await res.json();
-            if (data.success) {
-                const list = document.getElementById('room-songs-list');
-                if (data.data.songs.length === 0) {
-                    list.innerHTML = '<div style="color:#ccc; text-align:center; font-size:12px;">暂无协作歌曲</div>';
-                } else {
-                    list.innerHTML = data.data.songs.map(s => `
-                        <div style="padding:6px 0; border-bottom:1px solid #eee; font-size:12px; display:flex; justify-content:space-between;">
-                            <span><b style="color:var(--gold)">${s.type}</b>: ${s.name}</span>
-                            <span style="color:#bbb; font-size:10px;">@${s.addedBy}</span>
-                        </div>
-                    `).join('');
-                }
-            }
-        } catch(e) {}
+// 点赞函数
+async function likeSong(songId) {
+    const res = await fetch('/api/room/like', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId: activeRoomId, songId })
+    });
+    const data = await res.json();
+    if(data.success) {
+        refreshRoomInfo(); // 点赞后立即刷新展示顺序
     }
+}
+
+// 修改刷新函数，展示点赞和歌手
+async function refreshRoomInfo() {
+    if (!activeRoomId) return;
+    try {
+        const res = await fetch(`/api/room/info?roomId=${activeRoomId}`);
+        const data = await res.json();
+        if (data.success) {
+            // 更新标题
+            document.getElementById('display-room-title').innerText = data.data.name;
+            
+            const list = document.getElementById('room-songs-list');
+            if (data.data.songs.length === 0) {
+                list.innerHTML = '<div style="color:#ccc; text-align:center; font-size:12px;">暂无点播，快去搜索添加</div>';
+            } else {
+                list.innerHTML = data.data.songs.map(s => `
+                    <div style="padding:10px 0; border-bottom:1px solid #eee; display:grid; grid-template-columns: 1fr 60px; align-items:center;">
+                        <div>
+                            <div style="font-size:13px; font-weight:600;">
+                                <span style="color:var(--gold)">[${s.type}]</span> ${s.name}
+                            </div>
+                            <div style="font-size:11px; color:#999;">${s.ar} · @${s.addedBy}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <button onclick="likeSong('${s.id}')" style="background:#fff; border:1px solid #ffd591; color:var(--gold); border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">
+                                👍 ${s.likes || 0}
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+    } catch(e) {}
+}
 
     function copyShareLink() {
         const input = document.getElementById('share-link-input');

@@ -28,30 +28,13 @@ const User = mongoose.model('User', new mongoose.Schema({
     neteaseCookie: String
 }));
 
-// // 协作房间模型
-// const Room = mongoose.model('Room', new mongoose.Schema({
-//     roomId: { type: String, unique: true },
-//     name: { type: String, default: '未命名共享歌单' }, // 新增歌单名
-//     owner: String,
-//     songs: [{
-//         id: String,
-//         name: String,
-//         ar: String,
-//         dt: Number,
-//         type: String,
-//         addedBy: String,
-//         likes: { type: Number, default: 0 } // 新增点赞数
-//     }],
-//     createdAt: { type: Date, default: Date.now, expires: 86400 }
-// }));
-
 // 协作房间模型 - 修改为最通用的 Array 类型
 const Room = mongoose.model('Room', new mongoose.Schema({
     roomId: { type: String, unique: true },
     name: { type: String, default: '未命名共享歌单' },
     owner: String,
     songs: { type: Array, default: [] }, // 重点：直接设为 Array，不要写内部结构
-    createdAt: { type: Date, default: Date.now, expires: 86400 }
+    createdAt: { type: Date, default: Date.now }
 }));
 
 // 1. 默认歌单（直接使用 ID，速度最快）

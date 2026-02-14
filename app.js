@@ -268,31 +268,35 @@ app.post('/api/room/like', async (req, res) => {
     try {
         const { roomId, songId, username } = req.body;
 
-        // 1. 限制只有登录用户能点赞
-        if (!username) {
-            return res.json({ success: false, message: '请先登录网页账号再点赞' });
+        if (!username) return res.json({ success: false, message: '请先登录' });
+
+        // 1. 先检查这首歌是否已经被该用户点赞过
+        const roomCheck = await Room.findOne({ 
+            roomId: roomId, 
+            songs: { $elemMatch: { id: String(songId), likedBy: username } } 
+        });
+
+        if (roomCheck) {
+            return res.json({ success: false, message: '您已经点过赞啦！' });
         }
 
-        // 2. 原子更新
+        // 2. 执行更新：增加点赞数，并将用户名加入 likedBy 数组
+        // 使用 $push 如果字段不存在会自动创建
         const result = await Room.updateOne(
+            { roomId: roomId, "songs.id": String(songId) },
             { 
-                roomId: roomId, 
-                "songs.id": songId,
-                "songs.likedBy": { $ne: username } // 核心保护：如果 username 已在数组里，则不匹配
-            },
-            { 
-                $push: { "songs.$.likedBy": username }, // 将名字加入数组
-                $inc: { "songs.$.likes": 1 }           // 点赞数+1
+                $inc: { "songs.$.likes": 1 },
+                $push: { "songs.$.likedBy": username }
             }
         );
 
-        if (result.modifiedCount > 0) {
+        if (result.matchedCount > 0) {
             res.json({ success: true });
         } else {
-            // 匹配到了房间和歌曲，但没有修改，说明用户已经点过了
-            res.json({ success: false, message: '您已经点过赞啦！' });
+            res.json({ success: false, message: '找不到该歌曲' });
         }
     } catch (e) {
+        console.error('点赞报错:', e);
         res.json({ success: false, message: '点赞失败' });
     }
 });

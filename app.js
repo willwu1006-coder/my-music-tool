@@ -225,6 +225,15 @@ app.post('/api/room/add', async (req, res) => {
     else res.json({ success: false });
 });
 
+// 获取用户真实 IP 的辅助函数
+const getIp = (req) => {
+    // 优先获取 Zeabur/CDN 转发的真实 IP
+    return req.headers['x-real-ip'] || 
+           req.headers['x-forwarded-for'] || 
+           req.ip || 
+           '116.228.89.233'; // 实在拿不到时的默认兜底 IP
+};
+
 // 核心生成接口
 app.post('/api/calculate', async (req, res) => {
     try {

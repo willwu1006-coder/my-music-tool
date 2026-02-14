@@ -265,13 +265,36 @@ app.post('/api/room/update-name', async (req, res) => {
 
 // 点赞歌曲
 app.post('/api/room/like', async (req, res) => {
-    const { roomId, songId } = req.body;
-    // 使用 MongoDB 的定位符更新数组内特定对象的 likes 字段
-    const result = await Room.updateOne(
-        { roomId, "songs.id": songId },
-        { $inc: { "songs.$.likes": 1 } }
-    );
-    res.json({ success: result.modifiedCount > 0 });
+    try {
+        const { roomId, songId, username } = req.body;
+
+        // 1. 限制只有登录用户能点赞
+        if (!username) {
+            return res.json({ success: false, message: '请先登录网页账号再点赞' });
+        }
+
+        // 2. 原子更新
+        const result = await Room.updateOne(
+            { 
+                roomId: roomId, 
+                "songs.id": songId,
+                "songs.likedBy": { $ne: username } // 核心保护：如果 username 已在数组里，则不匹配
+            },
+            { 
+                $push: { "songs.$.likedBy": username }, // 将名字加入数组
+                $inc: { "songs.$.likes": 1 }           // 点赞数+1
+            }
+        );
+
+        if (result.modifiedCount > 0) {
+            res.json({ success: true });
+        } else {
+            // 匹配到了房间和歌曲，但没有修改，说明用户已经点过了
+            res.json({ success: false, message: '您已经点过赞啦！' });
+        }
+    } catch (e) {
+        res.json({ success: false, message: '点赞失败' });
+    }
 });
 
 app.post('/api/room/add', async (req, res) => {
@@ -297,7 +320,8 @@ app.post('/api/room/add', async (req, res) => {
             dt: Number(song.dt || 0),
             type: String(song.type || '未知舞种'),
             addedBy: String(username || '匿名舞友'),
-            likes: 0
+            likes: 0,
+            likedBy: []
         };
 
         // 3. 执行更新

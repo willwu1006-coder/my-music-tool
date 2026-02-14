@@ -500,29 +500,38 @@ async function refreshRoomInfo() {
     }
 
     function labelSong(idx, type) {
-        if(type && type !== 'SKIP') {
-            const song = { ...stagedSongs[idx], type: type };
-            
-            if (activeRoomId) {
-                // 如果在房间里，发送到服务器协作池
-                fetch('/api/room/add', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        roomId: activeRoomId, 
-                        username: currentUsername || '匿名舞友', 
-                        song: song 
+            if(type && type !== 'SKIP') {
+                const song = { ...stagedSongs[idx], type: type };
+                
+                if (activeRoomId) {
+                    // 发送到服务器
+                    fetch('/api/room/add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            roomId: activeRoomId, 
+                            username: currentUsername || '匿名舞友', 
+                            song: song 
+                        })
                     })
-                }).then(() => refreshRoomInfo());
-            } else {
-                // 不在房间里，存在本地
-                reqSongs.push(song);
-                updateReqUI();
+                    .then(res => res.json())
+                    .then(data => {
+                        if(data.success) {
+                            // 成功后延迟 300ms 刷新，确保数据库写入完成
+                            setTimeout(refreshRoomInfo, 300);
+                        } else {
+                            alert('添加失败：' + (data.message || '未知原因'));
+                        }
+                    })
+                    .catch(err => console.error('网络请求失败:', err));
+                } else {
+                    reqSongs.push(song);
+                    updateReqUI();
+                }
             }
+            stagedSongs.splice(idx, 1);
+            renderStaging();
         }
-        stagedSongs.splice(idx, 1);
-        renderStaging();
-    }
 
     function updateReqUI() {
         document.getElementById('my-requests').innerHTML = reqSongs.map((s,i) => `

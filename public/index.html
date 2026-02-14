@@ -157,6 +157,37 @@
         <div id="my-requests" style="margin-top:15px;"></div>
     </div>
 
+        <!-- 协作大厅卡片 -->
+    <div class="card" id="collab-card" style="display:none; border: 1px solid var(--accent);">
+        <span class="section-label" style="background: var(--accent); color: #fff; padding: 2px 8px; border-radius: 4px;">共享协作大厅</span>
+        
+        <div id="room-info-box" style="margin-top: 15px;">
+            <div style="background: #f0f7ff; padding: 12px; border-radius: 6px;">
+                <div style="font-size: 11px; color: var(--accent); font-weight: 700;">协作房间号: <span id="display-room-id" style="font-size: 16px; color: var(--gold);"></span></div>
+                
+                <div style="margin-top: 10px;">
+                    <div style="font-size: 11px; color: #999;">分享此链接邀请舞友点歌：</div>
+                    <div style="display: flex; gap: 5px; margin-top: 5px;">
+                        <input type="text" id="share-link-input" readonly onclick="this.select()" style="font-size: 10px; padding: 5px; margin: 0; background: #fff; border: 1px solid #ddd;">
+                        <button onclick="copyShareLink()" style="background: var(--gold); border: none; color: #fff; font-size: 10px; padding: 0 10px; cursor: pointer; border-radius: 4px; white-space: nowrap;">复制</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+        <div style="margin-top: 15px;">
+            <div style="font-size: 11px; color: #999; margin-bottom: 8px;">协作清单（实时更新）：</div>
+            <div id="room-songs-list" style="max-height: 180px; overflow-y: auto; background: #fafafa; border: 1px solid #eee; border-radius: 4px; padding: 8px;">
+                <!-- 协作歌曲动态加载 -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- 在账号模块里增加“发起协作”按钮 -->
+    <div id="create-room-box" style="margin-top: 10px; text-align: right; display: none;">
+        <button class="btn btn-sub" style="width: auto; font-size: 11px; padding: 5px 15px;" onclick="createRoom()">+ 发起共享协作</button>
+    </div>
+
     <!-- 4. 配置生成 -->
     <div class="card">
         <span class="section-label">3. 生成歌单</span>
@@ -226,21 +257,104 @@
     let userCookie = "", currentUsername = "", stagedSongs = [], reqSongs = [], finalSongs = [];
     const styles = ["慢三", "平四", "伦巴", "并四", "快三", "慢四", "吉特巴"];
     let timer = null; // 声明定时器变量
+    let activeRoomId = null; // 当前协作房间ID
     
-     // 【新增/补全】监听模式切换，显示或隐藏权重配置区
     document.addEventListener('DOMContentLoaded', () => {
+        // 1. 模式切换监听
         document.querySelectorAll('input[name="gen-mode"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
-                const area = document.getElementById('weight-config-area');
-                area.style.display = e.target.value === 'weighted' ? 'block' : 'none';
+                document.getElementById('weight-config-area').style.display = e.target.value === 'weighted' ? 'block' : 'none';
             });
         });
+
+        // 2. 检测 URL 房间参数
+        const params = new URLSearchParams(window.location.search);
+        const rid = params.get('room');
+        if (rid) {
+            joinRoom(rid);
+        }
     });
 
     function toggleAuth() {
         const sec = document.getElementById('auth-section');
         sec.style.display = sec.style.display === 'none' ? 'block' : 'none';
     }
+
+    // --- 协作房间逻辑 ---
+    async function createRoom() {
+        if (!currentUsername) return alert('请先登录网页账号再发起协作');
+        try {
+            const res = await fetch('/api/room/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: currentUsername })
+            });
+            const data = await res.json();
+            if (data.success) {
+                joinRoom(data.roomId);
+            }
+        } catch (e) { alert('创建失败'); }
+    }
+
+    async function joinRoom(rid) {
+        activeRoomId = rid;
+        document.getElementById('collab-card').style.display = 'block';
+        document.getElementById('display-room-id').innerText = rid;
+        document.getElementById('share-link-input').value = window.location.origin + window.location.pathname + '?room=' + rid;
+        
+        // 开启轮询刷新
+        setInterval(refreshRoomInfo, 5000);
+        refreshRoomInfo();
+    }
+
+    async function refreshRoomInfo() {
+        if (!activeRoomId) return;
+        try {
+            const res = await fetch(`/api/room/info?roomId=${activeRoomId}`);
+            const data = await res.json();
+            if (data.success) {
+                const list = document.getElementById('room-songs-list');
+                if (data.data.songs.length === 0) {
+                    list.innerHTML = '<div style="color:#ccc; text-align:center; font-size:12px;">暂无协作歌曲</div>';
+                } else {
+                    list.innerHTML = data.data.songs.map(s => `
+                        <div style="padding:6px 0; border-bottom:1px solid #eee; font-size:12px; display:flex; justify-content:space-between;">
+                            <span><b style="color:var(--gold)">${s.type}</b>: ${s.name}</span>
+                            <span style="color:#bbb; font-size:10px;">@${s.addedBy}</span>
+                        </div>
+                    `).join('');
+                }
+            }
+        } catch(e) {}
+    }
+
+    function copyShareLink() {
+        const input = document.getElementById('share-link-input');
+        input.select();
+        document.execCommand('copy');
+        alert('协作链接已复制！发给舞友即可共同点歌。');
+    }
+
+    // --- 账号系统 ---
+    async function handleAuth(type) {
+        const username = document.getElementById('u-name').value, password = document.getElementById('u-pass').value;
+        if(!username || !password) return alert('请填写账号密码');
+        const res = await fetch(`/api/auth/${type}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+        const data = await res.json();
+        if(data.success) {
+            if(type === 'login') {
+                currentUsername = username;
+                document.getElementById('user-display').innerText = `你好, ${username}`;
+                document.getElementById('auth-section').style.display = 'none';
+                document.getElementById('create-room-box').style.display = 'block'; // 登录后显示发起协作
+                if(data.neteaseCookie) {
+                    userCookie = data.neteaseCookie;
+                    updateLoginStatus('从账号加载');
+                } else if(userCookie) { syncCookie(); }
+            } else alert('注册成功，请登录');
+        } else alert(data.message);
+    }
+
     
 
     // 更新网易云状态标识
@@ -254,26 +368,26 @@
     }
 
     // 账号系统 (可选)
-    async function handleAuth(type) {
-        const username = document.getElementById('u-name').value, password = document.getElementById('u-pass').value;
-        if(!username || !password) return alert('请填写账号密码');
-        const res = await fetch(`/api/auth/${type}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
-        const data = await res.json();
-        if(data.success) {
-            if(type === 'login') {
-                currentUsername = username;
-                document.getElementById('user-display').innerText = `你好, ${username}`;
-                document.getElementById('auth-section').style.display = 'none';
-                if(data.neteaseCookie) {
-                    userCookie = data.neteaseCookie;
-                    updateLoginStatus('从账号加载');
-                } else if(userCookie) {
-                    // 如果已经连接了网易云，自动同步到刚登录的账号
-                    syncCookie();
-                }
-            } else alert('注册成功，请登录');
-        } else alert(data.message);
-    }
+    // async function handleAuth(type) {
+    //     const username = document.getElementById('u-name').value, password = document.getElementById('u-pass').value;
+    //     if(!username || !password) return alert('请填写账号密码');
+    //     const res = await fetch(`/api/auth/${type}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+    //     const data = await res.json();
+    //     if(data.success) {
+    //         if(type === 'login') {
+    //             currentUsername = username;
+    //             document.getElementById('user-display').innerText = `你好, ${username}`;
+    //             document.getElementById('auth-section').style.display = 'none';
+    //             if(data.neteaseCookie) {
+    //                 userCookie = data.neteaseCookie;
+    //                 updateLoginStatus('从账号加载');
+    //             } else if(userCookie) {
+    //                 // 如果已经连接了网易云，自动同步到刚登录的账号
+    //                 syncCookie();
+    //             }
+    //         } else alert('注册成功，请登录');
+    //     } else alert(data.message);
+    // }
 
     async function syncCookie() {
         if(currentUsername && userCookie) {
@@ -359,8 +473,28 @@
     }
 
     function labelSong(idx, type) {
-        if(type && type !== 'SKIP') { reqSongs.push({ ...stagedSongs[idx], type }); updateReqUI(); }
-        stagedSongs.splice(idx, 1); renderStaging();
+        if(type && type !== 'SKIP') {
+            const song = { ...stagedSongs[idx], type: type };
+            
+            if (activeRoomId) {
+                // 如果在房间里，发送到服务器协作池
+                fetch('/api/room/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        roomId: activeRoomId, 
+                        username: currentUsername || '匿名舞友', 
+                        song: song 
+                    })
+                }).then(() => refreshRoomInfo());
+            } else {
+                // 不在房间里，存在本地
+                reqSongs.push(song);
+                updateReqUI();
+            }
+        }
+        stagedSongs.splice(idx, 1);
+        renderStaging();
     }
 
     function updateReqUI() {
@@ -372,8 +506,7 @@
     async function generate() {
         const dur = document.getElementById('duration').value;
         const fill = document.getElementById('fill-toggle').checked;
-        const modeEl = document.querySelector('input[name="gen-mode"]:checked');
-        const mode = modeEl ? modeEl.value : 'sequential'; // 默认顺序模式
+        const mode = document.querySelector('input[name="gen-mode"]:checked').value;
         
         const weights = {};
         document.querySelectorAll('#weight-inputs input').forEach(el => {
@@ -393,7 +526,8 @@
                     requestedSongs: reqSongs, 
                     useDefaultFill: fill,
                     mode: mode, 
-                    weights: weights 
+                    weights: weights,
+                    roomId: activeRoomId 
                 }) 
             });
             const data = await res.json();
@@ -404,6 +538,8 @@
             else msg.innerText = '失败：' + data.message;
         } catch(e) { msg.innerText = '服务器错误'; }
     }
+
+    
 
 function renderAll(songs) {
         finalSongs = songs; 

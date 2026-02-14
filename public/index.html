@@ -415,27 +415,6 @@ async function refreshRoomInfo() {
         }
     }
 
-    // 账号系统 (可选)
-    // async function handleAuth(type) {
-    //     const username = document.getElementById('u-name').value, password = document.getElementById('u-pass').value;
-    //     if(!username || !password) return alert('请填写账号密码');
-    //     const res = await fetch(`/api/auth/${type}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
-    //     const data = await res.json();
-    //     if(data.success) {
-    //         if(type === 'login') {
-    //             currentUsername = username;
-    //             document.getElementById('user-display').innerText = `你好, ${username}`;
-    //             document.getElementById('auth-section').style.display = 'none';
-    //             if(data.neteaseCookie) {
-    //                 userCookie = data.neteaseCookie;
-    //                 updateLoginStatus('从账号加载');
-    //             } else if(userCookie) {
-    //                 // 如果已经连接了网易云，自动同步到刚登录的账号
-    //                 syncCookie();
-    //             }
-    //         } else alert('注册成功，请登录');
-    //     } else alert(data.message);
-    // }
 
     async function syncCookie() {
         if(currentUsername && userCookie) {
@@ -563,6 +542,9 @@ async function refreshRoomInfo() {
         const msg = document.getElementById('msg');
         
         if(!dur) return alert('请输入时长');
+        if(activeRoomId) {
+            console.log("提示：系统将优先从协作房间中按点赞顺序挑选符合各舞种概率的歌曲");
+        }
         msg.innerText = '正在计算编排序列...';
         try {
             const res = await fetch('/api/calculate', { 

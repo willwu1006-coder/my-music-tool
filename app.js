@@ -29,9 +29,18 @@ const User = mongoose.model('User', new mongoose.Schema({
 // 协作房间模型
 const Room = mongoose.model('Room', new mongoose.Schema({
     roomId: { type: String, unique: true },
+    name: { type: String, default: '未命名共享歌单' }, // 新增歌单名
     owner: String,
-    songs: Array, // 存储协作点播的歌曲列表
-    createdAt: { type: Date, default: Date.now, expires: 86400 } // 24小时后自动销毁，保持系统干净
+    songs: [{
+        id: String,
+        name: String,
+        ar: String,
+        dt: Number,
+        type: String,
+        addedBy: String,
+        likes: { type: Number, default: 0 } // 新增点赞数
+    }],
+    createdAt: { type: Date, default: Date.now, expires: 86400 }
 }));
 
 // 1. 默认歌单（直接使用 ID，速度最快）
@@ -207,11 +216,33 @@ app.post('/api/room/create', async (req, res) => {
     } catch (e) { res.json({ success: false }); }
 });
 
-// 获取房间信息
+// 获取房间信息 (返回时按点赞数排序)
 app.get('/api/room/info', async (req, res) => {
     const room = await Room.findOne({ roomId: req.query.roomId });
-    if (!room) return res.json({ success: false, message: '房间不存在' });
+    if (!room) return res.json({ success: false });
+    
+    // 按点赞数从高到低排序
+    room.songs.sort((a, b) => b.likes - a.likes);
+    
     res.json({ success: true, data: room });
+});
+
+// 修改房间名
+app.post('/api/room/update-name', async (req, res) => {
+    const { roomId, name } = req.body;
+    await Room.updateOne({ roomId }, { name });
+    res.json({ success: true });
+});
+
+// 点赞歌曲
+app.post('/api/room/like', async (req, res) => {
+    const { roomId, songId } = req.body;
+    // 使用 MongoDB 的定位符更新数组内特定对象的 likes 字段
+    const result = await Room.updateOne(
+        { roomId, "songs.id": songId },
+        { $inc: { "songs.$.likes": 1 } }
+    );
+    res.json({ success: result.modifiedCount > 0 });
 });
 
 // 往房间加歌 (使用 MongoDB 的 $push，防止多人操作冲突)
@@ -246,7 +277,9 @@ app.post('/api/calculate', async (req, res) => {
         if (roomId) {
             const room = await Room.findOne({ roomId });
             if (room && room.songs) {
-                finalRequests = [...finalRequests, ...room.songs];
+                // 先按点赞排序
+                const sortedRoomSongs = [...room.songs].sort((a, b) => b.likes - a.likes);
+                finalRequests = [...finalRequests, ...sortedRoomSongs];
             }
         }
         

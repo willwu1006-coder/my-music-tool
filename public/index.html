@@ -403,24 +403,41 @@ async function loadMyRooms() {
         if (data.success && data.rooms.length > 0) {
             container.style.display = 'block';
             list.innerHTML = data.rooms.map(r => `
-                <div onclick="joinRoom('${r.roomId}')" style="cursor:pointer; padding:8px; background:#f9f9f9; border-radius:4px; font-size:12px; display:flex; justify-content:space-between; align-items:center; border:1px solid transparent;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='transparent'">
-                    <span style="font-weight:600; color:var(--accent);">${r.name}</span>
-                    <span style="color:#bbb; font-size:10px;">ID: ${r.roomId}</span>
+                <div onclick="joinRoom('${r.roomId}')" style="position:relative; cursor:pointer; padding:10px; background:#fdfcf8; border-radius:6px; font-size:12px; border:1px solid #eee; transition:0.2s;">
+                    <div style="font-weight:600; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:15px;">${r.name}</div>
+                    <div style="color:#bbb; font-size:10px; margin-top:4px;">ID: ${r.roomId}</div>
+                    
+                    <!-- 删除按钮：使用 stopPropagation 防止触发 joinRoom -->
+                    <span onclick="event.stopPropagation(); deleteRoom('${r.roomId}')" 
+                          style="position:absolute; top:5px; right:8px; color:#ccc; font-size:16px; font-weight:bold; padding:2px 5px;"
+                          onmouseover="this.style.color='red'" 
+                          onmouseout="this.style.color='#ccc'">×</span>
                 </div>
             `).join('');
         } else {
             container.style.display = 'none';
         }
-    } catch (e) { console.error('加载历史房间失败'); }
+    } catch (e) { console.error('加载历史失败'); }
 }
-
-// 2. 修改 handleAuth 函数，在登录成功后调用 loadMyRooms
-// 在 handleAuth 的 if(type === 'login') 逻辑末尾添加：
-// loadMyRooms();
-
-// 3. 修改 createRoom 函数，在创建成功后调用 loadMyRooms
-// 在 createRoom 成功 joinRoom 之后添加：
-// loadMyRooms();
+async function deleteRoom(rid) {
+    if(!confirm('确定要删除这个协作房间吗？数据将无法找回。')) return;
+    
+    try {
+        const res = await fetch('/api/room/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roomId: rid, username: currentUsername })
+        });
+        const data = await res.json();
+        if(data.success) {
+            loadMyRooms(); // 重新加载列表
+            // 如果删除的正是当前打开的房间，则刷新页面
+            if(activeRoomId === rid) window.location.href = window.location.origin + window.location.pathname;
+        } else {
+            alert(data.message);
+        }
+    } catch (e) { alert('请求失败'); }
+}
 
     // --- 账号系统 ---
     async function handleAuth(type) {

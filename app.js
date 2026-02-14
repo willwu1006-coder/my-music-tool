@@ -217,14 +217,32 @@ app.post('/api/room/create', async (req, res) => {
 });
 
 // 获取房间信息 (返回时按点赞数排序)
+// 获取房间信息
 app.get('/api/room/info', async (req, res) => {
-    const room = await Room.findOne({ roomId: req.query.roomId });
-    if (!room) return res.json({ success: false });
-    
-    // 按点赞数从高到低排序
-    room.songs.sort((a, b) => b.likes - a.likes);
-    
-    res.json({ success: true, data: room });
+    try {
+        const { roomId } = req.query;
+        // 使用 .lean() 可以让返回的对象更容易操作
+        const room = await Room.findOne({ roomId }).lean();
+
+        // 1. 检查房间是否存在
+        if (!room) {
+            return res.json({ success: false, message: '房间不存在' });
+        }
+
+        // 2. 检查 songs 是否存在且是数组 (重点修复)
+        let songs = room.songs || [];
+        
+        // 3. 执行排序 (增加 likes 的默认值保护)
+        songs.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+        
+        // 4. 将排序后的歌重新放回对象
+        room.songs = songs;
+
+        res.json({ success: true, data: room });
+    } catch (e) {
+        console.error('获取房间信息失败:', e);
+        res.json({ success: false, message: '服务器内部错误' });
+    }
 });
 
 // 修改房间名
@@ -274,14 +292,14 @@ app.post('/api/calculate', async (req, res) => {
         let finalRequests = [...requestedSongs];
         
         // 重点：从数据库读取协作房间的歌曲
-        if (roomId) {
-            const room = await Room.findOne({ roomId });
-            if (room && room.songs) {
-                // 先按点赞排序
-                const sortedRoomSongs = [...room.songs].sort((a, b) => b.likes - a.likes);
-                finalRequests = [...finalRequests, ...sortedRoomSongs];
-            }
-        }
+      if (roomId) {
+      const room = await Room.findOne({ roomId }).lean();
+      if (room && room.songs && Array.isArray(room.songs)) {
+          // 按照点赞数降序排列
+          const sortedRoomSongs = [...room.songs].sort((a, b) => (b.likes || 0) - (a.likes || 0));
+          finalRequests = [...finalRequests, ...sortedRoomSongs];
+      }
+  }
         
         let collectivePool = [];
         if (useDefaultFill) {

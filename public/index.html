@@ -360,28 +360,41 @@ async function refreshRoomInfo() {
         const res = await fetch(`/api/room/info?roomId=${activeRoomId}`);
         const data = await res.json();
         if (data.success) {
-            // 更新标题
             document.getElementById('display-room-title').innerText = data.data.name;
             
             const list = document.getElementById('room-songs-list');
             if (data.data.songs.length === 0) {
                 list.innerHTML = '<div style="color:#ccc; text-align:center; font-size:12px;">暂无点播，快去搜索添加</div>';
             } else {
-                list.innerHTML = data.data.songs.map(s => `
-                    <div style="padding:10px 0; border-bottom:1px solid #eee; display:grid; grid-template-columns: 1fr 60px; align-items:center;">
-                        <div>
-                            <div style="font-size:13px; font-weight:600;">
-                                <span style="color:var(--gold)">[${s.type}]</span> ${s.name}
+                list.innerHTML = data.data.songs.map(s => {
+                    // --- 核心逻辑：处理点赞名单显示 ---
+                    let likeText = "";
+                    if (s.likedBy && s.likedBy.length > 0) {
+                        const maxShow = 3; // 最多显示 3 个名字
+                        const names = s.likedBy.slice(0, maxShow).join('、');
+                        likeText = s.likedBy.length > maxShow 
+                            ? `<span style="color:var(--gold); font-size:10px;">❤️ ${names} 等${s.likedBy.length}人已赞</span>`
+                            : `<span style="color:var(--gold); font-size:10px;">❤️ ${names} 已赞</span>`;
+                    }
+
+                    return `
+                        <div style="padding:10px 0; border-bottom:1px solid #eee; display:grid; grid-template-columns: 1fr 60px; align-items:center;">
+                            <div>
+                                <div style="font-size:13px; font-weight:600;">
+                                    <span style="color:var(--gold)">[${s.type}]</span> ${s.name}
+                                </div>
+                                <div style="font-size:11px; color:#999;">${s.ar} · @${s.addedBy}</div>
+                                <!-- 显示点赞人名单 -->
+                                <div style="margin-top:2px;">${likeText}</div>
                             </div>
-                            <div style="font-size:11px; color:#999;">${s.ar} · @${s.addedBy}</div>
+                            <div style="text-align:right;">
+                                <button onclick="likeSong('${s.id}')" style="background:#fff; border:1px solid #ffd591; color:var(--gold); border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">
+                                    👍 ${s.likes || 0}
+                                </button>
+                            </div>
                         </div>
-                        <div style="text-align:right;">
-                            <button onclick="likeSong('${s.id}')" style="background:#fff; border:1px solid #ffd591; color:var(--gold); border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">
-                                👍 ${s.likes || 0}
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             }
         }
     } catch(e) {}

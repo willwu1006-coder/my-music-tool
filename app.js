@@ -11,6 +11,8 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
+const getIp = (req) => req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.ip || '116.228.89.233';
+
 // 连接数据库 (Zeabur 环境变量)
 const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017/dance_tool';
 mongoose.connect(MONGO_URL)
@@ -274,14 +276,6 @@ app.post('/api/room/add', async (req, res) => {
     else res.json({ success: false });
 });
 
-// 获取用户真实 IP 的辅助函数
-const getIp = (req) => {
-    // 优先获取 Zeabur/CDN 转发的真实 IP
-    return req.headers['x-real-ip'] || 
-           req.headers['x-forwarded-for'] || 
-           req.ip || 
-           '116.228.89.233'; // 实在拿不到时的默认兜底 IP
-};
 
 // 核心生成接口
 app.post('/api/calculate', async (req, res) => {
@@ -292,14 +286,14 @@ app.post('/api/calculate', async (req, res) => {
         let finalRequests = [...requestedSongs];
         
         // 重点：从数据库读取协作房间的歌曲
-      if (roomId) {
-      const room = await Room.findOne({ roomId }).lean();
-      if (room && room.songs && Array.isArray(room.songs)) {
-          // 按照点赞数降序排列
-          const sortedRoomSongs = [...room.songs].sort((a, b) => (b.likes || 0) - (a.likes || 0));
-          finalRequests = [...finalRequests, ...sortedRoomSongs];
-      }
-  }
+        if (roomId) {
+        const room = await Room.findOne({ roomId }).lean();
+        if (room && room.songs && Array.isArray(room.songs)) {
+            // 按照点赞数降序排列
+            const sortedRoomSongs = [...room.songs].sort((a, b) => (b.likes || 0) - (a.likes || 0));
+            finalRequests = [...finalRequests, ...sortedRoomSongs];
+        }
+    }
         
         let collectivePool = [];
         if (useDefaultFill) {

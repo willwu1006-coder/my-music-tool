@@ -246,6 +246,25 @@ app.post('/api/room/update-name', async (req, res) => {
     res.json({ success: true });
 });
 
+// 获取当前用户创建的所有房间
+app.get('/api/room/my-rooms', async (req, res) => {
+    try {
+        const { username } = req.query;
+        if (!username) return res.json({ success: false });
+
+        // 查询 owner 为该用户的所有房间，按时间倒序排列，取最近 10 个
+        const rooms = await Room.find({ owner: username })
+                                .select('roomId name createdAt')
+                                .sort({ createdAt: -1 })
+                                .limit(10)
+                                .lean();
+
+        res.json({ success: true, rooms });
+    } catch (e) {
+        res.json({ success: false });
+    }
+});
+
 // 点赞歌曲
 app.post('/api/room/like', async (req, res) => {
     try {

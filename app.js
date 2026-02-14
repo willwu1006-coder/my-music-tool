@@ -267,13 +267,31 @@ app.post('/api/room/like', async (req, res) => {
 
 // 往房间加歌 (使用 MongoDB 的 $push，防止多人操作冲突)
 app.post('/api/room/add', async (req, res) => {
-    const { roomId, username, song } = req.body;
-    const result = await Room.updateOne(
-        { roomId: roomId },
-        { $push: { songs: { ...song, addedBy: username || '匿名舞友' } } }
-    );
-    if (result.modifiedCount > 0) res.json({ success: true });
-    else res.json({ success: false });
+    try {
+        const { roomId, username, song } = req.body;
+        // 使用 $push 将歌曲加入数组，同时确保增加 likes: 0 的默认值
+        const result = await Room.updateOne(
+            { roomId: roomId },
+            { 
+                $push: { 
+                    songs: { 
+                        ...song, 
+                        addedBy: username || '匿名舞友', 
+                        likes: 0 
+                    } 
+                } 
+            }
+        );
+        
+        // 只要匹配到了房间即可认为成功（nMatched）
+        if (result.matchedCount > 0) {
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, message: '房间不存在' });
+        }
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 

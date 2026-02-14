@@ -265,6 +265,23 @@ app.get('/api/room/my-rooms', async (req, res) => {
     }
 });
 
+// 删除协作房间
+app.post('/api/room/delete', async (req, res) => {
+    try {
+        const { roomId, username } = req.body;
+        // 只有房间的 owner（创建者）才有权删除
+        const result = await Room.deleteOne({ roomId, owner: username });
+        
+        if (result.deletedCount > 0) {
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, message: '无权删除或房间已失效' });
+        }
+    } catch (e) {
+        res.json({ success: false, message: '删除失败' });
+    }
+});
+
 // 点赞歌曲
 app.post('/api/room/like', async (req, res) => {
     try {

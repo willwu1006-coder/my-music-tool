@@ -93,6 +93,16 @@
             transform: scale(0.98); /* 稍微缩小一点，给用户按压感 */
             transition: transform 0.2s;
         }
+        /* 必须是这种定位方式，不能用 display: none */
+        #poster-wrap { 
+            position: absolute; 
+            left: -9999px; /* 把海报藏到屏幕外面去 */
+            top: 0;
+            width: 600px; 
+            background: #FFF; 
+            padding: 60px; 
+            box-sizing: border-box; /* 确保 padding 不撑破宽度 */
+        }
     </style>
 </head>
 <body>
@@ -752,19 +762,34 @@ function renderAll(songs) {
 }
 
     // 专门给海报渲染的函数
-    function renderPosterContent() {
-        const p = document.getElementById('p-container');
-        p.innerHTML = '';
-        finalSongs.forEach((s) => {
-            const timeStr = Math.floor(s.dt/60000) + ":" + Math.floor((s.dt%60000)/1000).toString().padStart(2,'0');
-            p.innerHTML += `
-                <div style="display:flex; justify-content:space-between; padding:12px 0; border-bottom:1px solid #eee; font-size:14px;">
-                    <span style="width:70px; color:var(--gold); font-weight:bold;">${s.type}</span>
-                    <span style="flex:1;">${s.name} <small style="color:#999">/ ${s.ar}</small></span>
-                    <span style="width:50px; text-align:right; font-family:monospace;">${timeStr}</span>
-                </div>`;
-        });
-        document.getElementById('p-date').innerText = new Date().toLocaleDateString();
+function renderPosterContent() {
+    const p = document.getElementById('p-container');
+    p.innerHTML = ''; // 清空旧内容
+    
+    if (!finalSongs || finalSongs.length === 0) {
+        p.innerHTML = '<div style="text-align:center; padding:50px; color:#ccc;">暂无歌曲数据</div>';
+        return;
+    }
+
+    finalSongs.forEach((s, i) => {
+        const timeStr = Math.floor(s.dt/60000) + ":" + Math.floor((s.dt%60000)/1000).toString().padStart(2,'0');
+        
+        // 采用和预览列表类似的上下结构，确保美观且对齐
+        p.innerHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid #F9F7F0;">
+                <span style="width:40px; font-family:'JetBrains Mono'; font-size:14px; color:#bbb;">${(i+1).toString().padStart(2,'0')}</span>
+                <span style="width:70px; color:var(--gold); font-weight:bold; font-size:14px;">${s.type}</span>
+                <div style="flex:1; margin: 0 15px; overflow:hidden;">
+                    <div style="font-weight:600; font-size:16px; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
+                    <div style="font-size:12px; color:#999; margin-top:2px;">${s.ar}</div>
+                </div>
+                <span style="width:50px; text-align:right; font-family:'JetBrains Mono'; font-size:13px; color:#bbb;">${timeStr}</span>
+            </div>`;
+    });
+
+    // 更新日期和总计（可选）
+    const title = document.getElementById('display-room-title').innerText;
+    document.getElementById('p-date').innerText = title + " - " + new Date().toLocaleDateString();
 }
 
     function downloadPoster() {

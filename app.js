@@ -28,20 +28,29 @@ const User = mongoose.model('User', new mongoose.Schema({
     neteaseCookie: String
 }));
 
-// 协作房间模型
+// // 协作房间模型
+// const Room = mongoose.model('Room', new mongoose.Schema({
+//     roomId: { type: String, unique: true },
+//     name: { type: String, default: '未命名共享歌单' }, // 新增歌单名
+//     owner: String,
+//     songs: [{
+//         id: String,
+//         name: String,
+//         ar: String,
+//         dt: Number,
+//         type: String,
+//         addedBy: String,
+//         likes: { type: Number, default: 0 } // 新增点赞数
+//     }],
+//     createdAt: { type: Date, default: Date.now, expires: 86400 }
+// }));
+
+// 协作房间模型 - 修改为最通用的 Array 类型
 const Room = mongoose.model('Room', new mongoose.Schema({
     roomId: { type: String, unique: true },
-    name: { type: String, default: '未命名共享歌单' }, // 新增歌单名
+    name: { type: String, default: '未命名共享歌单' },
     owner: String,
-    songs: [{
-        id: String,
-        name: String,
-        ar: String,
-        dt: Number,
-        type: String,
-        addedBy: String,
-        likes: { type: Number, default: 0 } // 新增点赞数
-    }],
+    songs: { type: Array, default: [] }, // 重点：直接设为 Array，不要写内部结构
     createdAt: { type: Date, default: Date.now, expires: 86400 }
 }));
 
@@ -265,32 +274,46 @@ app.post('/api/room/like', async (req, res) => {
     res.json({ success: result.modifiedCount > 0 });
 });
 
-// 往房间加歌 (使用 MongoDB 的 $push，防止多人操作冲突)
 app.post('/api/room/add', async (req, res) => {
     try {
-        const { roomId, username, song } = req.body;
-        // 使用 $push 将歌曲加入数组，同时确保增加 likes: 0 的默认值
+        let { roomId, username, song } = req.body;
+
+        // 1. 如果 song 莫名其妙变成了字符串，强行解析它
+        if (typeof song === 'string') {
+            try {
+                // 处理可能存在的奇怪转义字符
+                const cleanJson = song.replace(/\n/g, '').replace(/\+/g, '');
+                song = JSON.parse(cleanJson);
+            } catch (e) {
+                console.error('JSON解析失败:', song);
+            }
+        }
+
+        // 2. 手动提取字段，构建一个纯净的对象存入（这是解决 CastError 的终极方案）
+        const songObject = {
+            id: String(song.id || ''),
+            name: String(song.name || '未知歌名'),
+            ar: String(song.ar || '未知歌手'),
+            dt: Number(song.dt || 0),
+            type: String(song.type || '未知舞种'),
+            addedBy: String(username || '匿名舞友'),
+            likes: 0
+        };
+
+        // 3. 执行更新
         const result = await Room.updateOne(
             { roomId: roomId },
-            { 
-                $push: { 
-                    songs: { 
-                        ...song, 
-                        addedBy: username || '匿名舞友', 
-                        likes: 0 
-                    } 
-                } 
-            }
+            { $push: { songs: songObject } }
         );
-        
-        // 只要匹配到了房间即可认为成功（nMatched）
+
         if (result.matchedCount > 0) {
             res.json({ success: true });
         } else {
-            res.json({ success: false, message: '房间不存在' });
+            res.json({ success: false, message: '找不到该房间' });
         }
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('添加失败详细日志:', e);
+        res.json({ success: false, message: '添加失败: ' + e.message });
     }
 });
 

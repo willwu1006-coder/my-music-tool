@@ -331,14 +331,25 @@ async function updateRoomName() {
 
 // 点赞函数
 async function likeSong(songId) {
+    if (!currentUsername) {
+        alert('只有登录用户可以点赞哦！');
+        return;
+    }
+
     const res = await fetch('/api/room/like', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId: activeRoomId, songId })
+        body: JSON.stringify({ 
+            roomId: activeRoomId, 
+            songId: songId,
+            username: currentUsername // 传入当前登录的用户名
+        })
     });
     const data = await res.json();
     if(data.success) {
-        refreshRoomInfo(); // 点赞后立即刷新展示顺序
+        refreshRoomInfo(); 
+    } else {
+        alert(data.message); // 会提示“您已经点过赞啦！”
     }
 }
 

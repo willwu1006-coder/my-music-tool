@@ -104,6 +104,7 @@
             <span id="user-display">未登录个人账号</span> | 
             <a onclick="toggleAuth()">登录/注册 (可选)</a>
         </div>
+</div>
     </header>
 
     <!-- 1. 账号模块 (默认隐藏) -->
@@ -196,6 +197,12 @@
     
     <!-- “发起协作”按钮容器：独立于卡片之外 -->
     <div id="create-room-box" style="margin-top: 10px; text-align: right; display: none; width: 100%; max-width: 650px;">
+        <div id="my-rooms-container" style="display:none; text-align: left; margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #f0ead6;">
+            <div style="font-size: 11px; color: var(--gold); font-weight: 700; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;">我的历史协作 (24h内有效)</div>
+            <div id="my-rooms-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <!-- 列表内容 -->
+            </div>
+        </div>
         <button class="btn btn-sub" style="width: auto; font-size: 11px; padding: 5px 15px; border-color: var(--gold); color: var(--gold);" onclick="createRoom()">+ 发起新的共享协作房间</button>
     </div>
 
@@ -303,6 +310,7 @@
             const data = await res.json();
             if (data.success) {
                 joinRoom(data.roomId);
+                loadMyRooms();
             }
         } catch (e) { alert('创建失败'); }
     }
@@ -407,6 +415,37 @@ async function refreshRoomInfo() {
         alert('协作链接已复制！发给舞友即可共同点歌。');
     }
 
+    // 1. 加载“我的房间”列表
+async function loadMyRooms() {
+    if (!currentUsername) return;
+    try {
+        const res = await fetch(`/api/room/my-rooms?username=${currentUsername}`);
+        const data = await res.json();
+        const container = document.getElementById('my-rooms-container');
+        const list = document.getElementById('my-rooms-list');
+        
+        if (data.success && data.rooms.length > 0) {
+            container.style.display = 'block';
+            list.innerHTML = data.rooms.map(r => `
+                <div onclick="joinRoom('${r.roomId}')" style="cursor:pointer; padding:8px; background:#f9f9f9; border-radius:4px; font-size:12px; display:flex; justify-content:space-between; align-items:center; border:1px solid transparent;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='transparent'">
+                    <span style="font-weight:600; color:var(--accent);">${r.name}</span>
+                    <span style="color:#bbb; font-size:10px;">ID: ${r.roomId}</span>
+                </div>
+            `).join('');
+        } else {
+            container.style.display = 'none';
+        }
+    } catch (e) { console.error('加载历史房间失败'); }
+}
+
+// 2. 修改 handleAuth 函数，在登录成功后调用 loadMyRooms
+// 在 handleAuth 的 if(type === 'login') 逻辑末尾添加：
+// loadMyRooms();
+
+// 3. 修改 createRoom 函数，在创建成功后调用 loadMyRooms
+// 在 createRoom 成功 joinRoom 之后添加：
+// loadMyRooms();
+
     // --- 账号系统 ---
     async function handleAuth(type) {
         const username = document.getElementById('u-name').value, password = document.getElementById('u-pass').value;
@@ -419,6 +458,7 @@ async function refreshRoomInfo() {
                 document.getElementById('user-display').innerText = `你好, ${username}`;
                 document.getElementById('auth-section').style.display = 'none';
                 document.getElementById('create-room-box').style.display = 'block'; // 登录后显示发起协作
+                loadMyRooms();
                 if(data.neteaseCookie) {
                     userCookie = data.neteaseCookie;
                     updateLoginStatus('从账号加载');

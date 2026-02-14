@@ -4,19 +4,35 @@ const netease = require('NeteaseCloudMusicApi');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const path = require('path');
+const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-// 初始化数据库
-const DB_DIR = process.env.PERSISTENT_PATH || '.';
-const USER_DB = path.join(DB_DIR, 'users.json');
-const getIp = (req) => req.headers['x-real-ip'] || req.ip || '116.228.89.233';
+// 连接数据库 (Zeabur 环境变量)
+const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017/dance_tool';
+mongoose.connect(MONGO_URL)
+  .then(() => console.log('✅ MongoDB 已连接'))
+  .catch(err => console.error('❌ 数据库连接失败:', err));
 
-// 辅助函数：读写用户数据
-const getUsers = () => JSON.parse(fs.readFileSync(USER_DB));
-const saveUsers = (data) => fs.writeFileSync(USER_DB, JSON.stringify(data, null, 2));
+// --- 定义模型 (替代原来的 users.json 和 rooms.json) ---
+
+// 用户模型
+const User = mongoose.model('User', new mongoose.Schema({
+    username: { type: String, unique: true, required: true },
+    password: { type: String, required: true },
+    neteaseCookie: String
+}));
+
+// 协作房间模型
+const Room = mongoose.model('Room', new mongoose.Schema({
+    roomId: { type: String, unique: true },
+    owner: String,
+    songs: Array, // 存储协作点播的歌曲列表
+    createdAt: { type: Date, default: Date.now, expires: 86400 } // 24小时后自动销毁，保持系统干净
+}));
 
 // 1. 默认歌单（直接使用 ID，速度最快）
 const DEFAULT_PLAYLISTS = [
@@ -97,7 +113,6 @@ function pickTypeByWeight(weights, excludeType = null) {
     }
     return entries[0][0];
 }
-
 // 【新】搜索接口
 app.get('/api/search', async (req, res) => {
     try {
@@ -148,44 +163,84 @@ app.get('/api/playlist/info', async (req, res) => {
         res.json({ success: false, message: '解析失败，请检查歌单是否为公开' });
     }
 });
-// --- 1. 自有账号系统接口 ---
 
+// 注册
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { username, password } = req.body;
-        const users = getUsers();
-        if (users[username]) return res.json({ success: false, message: '用户名已存在' });
-        users[username] = { password: await bcrypt.hash(password, 10), neteaseCookie: '' };
-        saveUsers(users);
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = new User({ username, password: hashedPassword });
+        await newUser.save();
         res.json({ success: true });
-    } catch(e) { res.json({ success: false, message: '注册失败' }); }
+    } catch (e) {
+        res.json({ success: false, message: '用户名已存在' });
+    }
 });
 
+// 登录
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
-    const users = getUsers();
-    const user = users[username];
-    if (!user || !(await bcrypt.compare(password, user.password))) return res.json({ success: false, message: '账号或密码错误' });
+    const user = await User.findOne({ username });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+        return res.json({ success: false, message: '账号或密码错误' });
+    }
     res.json({ success: true, neteaseCookie: user.neteaseCookie });
 });
 
-app.post('/api/auth/update-cookie', (req, res) => {
+// 更新网易云 Cookie
+app.post('/api/auth/update-cookie', async (req, res) => {
     const { username, cookie } = req.body;
-    const users = getUsers();
-    if (users[username]) { 
-        users[username].neteaseCookie = cookie; 
-        saveUsers(users); 
-        res.json({ success: true }); 
-    } else res.json({ success: false, message: '用户不存在' });
+    await User.updateOne({ username }, { neteaseCookie: cookie });
+    res.json({ success: true });
 });
 
+
+
+// 创建房间
+app.post('/api/room/create', async (req, res) => {
+    try {
+        const { username } = req.body;
+        const roomId = crypto.randomBytes(4).toString('hex');
+        const newRoom = new Room({ roomId, owner: username, songs: [] });
+        await newRoom.save();
+        res.json({ success: true, roomId });
+    } catch (e) { res.json({ success: false }); }
+});
+
+// 获取房间信息
+app.get('/api/room/info', async (req, res) => {
+    const room = await Room.findOne({ roomId: req.query.roomId });
+    if (!room) return res.json({ success: false, message: '房间不存在' });
+    res.json({ success: true, data: room });
+});
+
+// 往房间加歌 (使用 MongoDB 的 $push，防止多人操作冲突)
+app.post('/api/room/add', async (req, res) => {
+    const { roomId, username, song } = req.body;
+    const result = await Room.updateOne(
+        { roomId: roomId },
+        { $push: { songs: { ...song, addedBy: username || '匿名舞友' } } }
+    );
+    if (result.modifiedCount > 0) res.json({ success: true });
+    else res.json({ success: false });
+});
 
 // 核心生成接口
 app.post('/api/calculate', async (req, res) => {
     try {
-        let { duration, cookie, requestedSongs = [], useDefaultFill = true, mode = 'sequential', weights = {} } = req.body;
+        let { duration, cookie, requestedSongs = [], useDefaultFill = true, mode = 'sequential', weights = {} , roomId } = req.body;
         if(!cookie) return res.json({ success: false, message: '未检测到网易云登录状态' });
-
+        
+        let finalRequests = [...requestedSongs];
+        
+        // 重点：从数据库读取协作房间的歌曲
+        if (roomId) {
+            const room = await Room.findOne({ roomId });
+            if (room && room.songs) {
+                finalRequests = [...finalRequests, ...room.songs];
+            }
+        }
+        
         let collectivePool = [];
         if (useDefaultFill) {
             const colRes = await netease.song_detail({ ids: COLLECTIVE_CONFIG.map(c => c.id).join(','), cookie, realIP: getIp(req) });
@@ -197,7 +252,9 @@ app.post('/api/calculate', async (req, res) => {
 
         let requestPool = {};
         DEFAULT_PLAYLISTS.forEach(p => requestPool[p.name] = []);
-        requestedSongs.forEach(s => { if (requestPool[s.type]) requestPool[s.type].push(s); });
+        finalRequests.forEach(s => { 
+            if (requestPool[s.type]) requestPool[s.type].push(s); 
+        });
 
         let baseData = [[],[],[],[],[],[],[]];
         if (useDefaultFill) {
@@ -278,37 +335,6 @@ app.post('/api/calculate', async (req, res) => {
                 if (!song.type.includes('集体')) roundCounter++;
             }
         }
-
-        //     for (let i = 0; i < 7; i++) {
-        //         const typeName = DEFAULT_PLAYLISTS[i].name;
-        //         let song = null;
-        //         if (requestPool[typeName]?.length > 0) { song = requestPool[typeName].shift(); hasMore = true; }
-        //         else if (useDefaultFill && baseData[i][basePointers[i]]) {
-        //             const raw = baseData[i][basePointers[i]++];
-        //             song = { id: raw.id, name: raw.name, ar: formatArtists(raw), dt: raw.dt || raw.duration, type: typeName };
-        //             hasMore = true;
-        //         }
-        //         if (song && !usedIds.has(song.id)) { result.push(song); usedIds.add(song.id); currentMs += song.dt; }
-        //         if (currentMs >= targetMs) break;
-        //     }
-        //     // ---  插入一首集体舞 (分散编排：每轮结束后插一首) ---
-        //     if (useDefaultFill && collectivePool.length > 0 && currentMs < targetMs) {
-        //         const colSong = collectivePool.shift(); // 按顺序取出一首：恰恰 -> 兔子 -> 16步
-        //         if (!usedIds.has(colSong.id)) {
-        //             result.push(colSong);
-        //             usedIds.add(colSong.id);
-        //             currentMs += colSong.dt;
-        //             hasMore = true; 
-        //         }
-        //     }
-        // }
-        // const trackIds = result.map(s => s.id).reverse().join(',');
-        // const createRes = await netease.playlist_create({ name: `舞会_${new Date().toLocaleDateString()}`, cookie });
-        // if (createRes.body.code !== 200) throw new Error(createRes.body.msg || '创建歌单失败');
-        
-        // const newId = createRes.body.id;
-        // await netease.playlist_tracks({ op: 'add', pid: newId, tracks: trackIds, cookie });
-        // res.json({ success: true, songs: result, playlistId: newId });
         res.json({ success: true, songs: result });
     } catch (e) {
         res.json({ success: false, message: e.message });

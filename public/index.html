@@ -393,7 +393,7 @@ async function refreshRoomInfo() {
         const res = await fetch(`/api/room/info?roomId=${activeRoomId}`);
         const data = await res.json();
         if (data.success) {
-            // 更新歌单标题
+            // 1. 更新歌单大标题
             document.getElementById('display-room-title').innerText = data.data.name;
             
             const list = document.getElementById('room-songs-list');
@@ -402,27 +402,40 @@ async function refreshRoomInfo() {
                 return;
             }
 
-            // 重新渲染列表
+            // 2. 遍历并生成 HTML
             list.innerHTML = data.data.songs.map(s => {
-                // 处理点赞名单展示逻辑
+                // --- 逻辑 A: 处理点赞名单展示 ---
                 let likeDetail = "";
                 if (s.likedBy && s.likedBy.length > 0) {
-                    const maxShow = 2; // 协作区紧凑点，显示2个人名
+                    const maxShow = 2; // 最多显示2个人名，多了省略
                     const names = s.likedBy.slice(0, maxShow).join('、');
                     likeDetail = s.likedBy.length > maxShow 
                         ? `<span style="color:var(--gold); font-size:10px; display:block; margin-top:2px;">❤️ ${names} 等${s.likedBy.length}人已赞</span>`
                         : `<span style="color:var(--gold); font-size:10px; display:block; margin-top:2px;">❤️ ${names} 已赞</span>`;
                 }
 
-                // 核心 HTML 结构：左侧信息（歌名+歌手+点赞人），右侧操作（点赞按钮）
+                // --- 逻辑 B: 权限校验 (只有房主或加歌的人能看到垃圾桶) ---
+                const isOwner = currentUsername === data.data.owner;
+                const isAdder = currentUsername === s.addedBy;
+                const canDelete = isOwner || isAdder;
+
+                // 安全处理歌名（防止单引号导致 HTML 报错）
+                const safeName = s.name.replace(/'/g, "\\'");
+                
+                const deleteHtml = canDelete ? 
+                    `<span onclick="removeSongFromRoom('${s.id}', '${safeName}')" style="cursor:pointer; color:#ff4d4f; font-size:12px; margin-left:8px;" title="从房间移除">🗑️</span>` 
+                    : "";
+
+                // --- 逻辑 C: 返回单行结构 ---
                 return `
                     <div style="padding:12px 0; border-bottom:1px solid #eee; display:grid; grid-template-columns: 1fr 65px; align-items: start; gap:10px;">
                         <div style="overflow:hidden;">
-                            <!-- 第一行：舞种 + 歌名 + 播放按钮 -->
+                            <!-- 第一行：舞种 + 歌名 + 播放按钮 + 删除按钮 -->
                             <div style="display:flex; align-items:center; gap:5px; font-size:13px; font-weight:600;">
                                 <span style="color:var(--gold); white-space:nowrap;">[${s.type}]</span>
                                 <span style="color:#333; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.name}</span>
                                 <span class="play-btn" onclick="playSong('${s.id}')" style="cursor:pointer; font-size:12px; flex-shrink:0;">▶️</span>
+                                ${deleteHtml}
                             </div>
                             
                             <!-- 第二行：歌手名 · 添加者 -->
@@ -430,11 +443,11 @@ async function refreshRoomInfo() {
                                 ${s.ar} <span style="margin:0 3px; opacity:0.5;">·</span> @${s.addedBy || '匿名'}
                             </div>
                             
-                            <!-- 第三行：点赞名单（如果有的话） -->
+                            <!-- 第三行：点赞名单细节 -->
                             ${likeDetail}
                         </div>
 
-                        <!-- 右侧点赞按钮 -->
+                        <!-- 右侧固定区域：点赞操作 -->
                         <div style="text-align:right;">
                             <button onclick="likeSong('${s.id}')" style="background:#fff; border:1px solid #ffd591; color:var(--gold); border-radius:4px; padding:4px 8px; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:3px;">
                                 👍 <span>${s.likes || 0}</span>
@@ -446,6 +459,32 @@ async function refreshRoomInfo() {
         }
     } catch(e) {
         console.error("刷新协作列表失败:", e);
+    }
+}
+
+    async function removeSongFromRoom(songId, songName) {
+    if (!currentUsername) return alert('请先登录');
+    if (!confirm(`确定要从协作大厅移除歌曲《${songName}》吗？`)) return;
+
+    try {
+        const res = await fetch('/api/room/remove-song', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                roomId: activeRoomId, 
+                songId: songId, 
+                username: currentUsername 
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showStatusTip(`🗑️ 已移除: ${songName}`);
+            refreshRoomInfo(); // 刷新列表
+        } else {
+            alert(data.message);
+        }
+    } catch (e) {
+        alert('操作失败');
     }
 }
 

@@ -211,7 +211,6 @@ app.post('/api/room/create', async (req, res) => {
 });
 
 // 获取房间信息 (返回时按点赞数排序)
-// 获取房间信息
 app.get('/api/room/info', async (req, res) => {
     try {
         const { roomId } = req.query;
@@ -364,6 +363,27 @@ app.post('/api/room/add', async (req, res) => {
     }
 });
 
+// 获取歌曲播放链接
+app.get('/api/song/url', async (req, res) => {
+    try {
+        const { id, cookie } = req.query;
+        // 获取音乐 URL，默认选择标准音质
+        const result = await netease.song_url({ 
+            id, 
+            cookie: cookie || "", 
+            realIP: getIp(req) 
+        });
+        
+        const songData = result.body.data[0];
+        if (songData && songData.url) {
+            res.json({ success: true, url: songData.url });
+        } else {
+            res.json({ success: false, message: '无法获取播放链接（可能是VIP歌曲或版权限制）' });
+        }
+    } catch (e) {
+        res.json({ success: false, message: '获取失败' });
+    }
+});
 
 // 核心生成接口
 app.post('/api/calculate', async (req, res) => {

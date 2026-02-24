@@ -14,12 +14,6 @@
         .card { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #f0ead6; }
         .section-label { font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         
-        /* 列表展示 */
-        
-        /* .song-row { display: grid; grid-template-columns: 35px 70px 1fr 140px 60px; gap: 10px; padding: 12px 0; border-bottom: 1px solid #F5F5F5; font-size: 13px; align-items: center; }
-        .song-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #888; } */
-
         /* 找到并替换原来的 .song-row 样式 */
         .song-row { 
             display: grid; 
@@ -106,7 +100,7 @@
     </style>
 </head>
 <body>
-
+<audio id="global-player" style="display:none;" controls></audio>
 <div class="container">
     <header style="text-align:center; margin-bottom:20px;">
         <h1 style="font-family:'Playfair Display'; color:var(--accent); margin:0;">Dance Music Tool</h1>
@@ -279,6 +273,51 @@
         }
     });
 
+    let currentPlayingId = null;
+
+    async function playSong(id) {
+        const player = document.getElementById('global-player');
+        const btn = event.currentTarget; // 获取当前点击的按钮
+        
+        // 如果点击的是正在播放的歌，就暂停
+        if (currentPlayingId === id && !player.paused) {
+            player.pause();
+            btn.innerText = "▶️";
+            return;
+        }
+    
+        try {
+            // 视觉反馈：显示加载中
+            const originalText = btn.innerText;
+            btn.innerText = "⌛";
+    
+            const res = await fetch(`/api/song/url?id=${id}&cookie=${encodeURIComponent(userCookie)}`);
+            const data = await res.json();
+    
+            if (data.success && data.url) {
+                player.src = data.url.replace('http://', 'https://'); // 强制 HTTPS 避免跨域阻拦
+                player.play();
+                currentPlayingId = id;
+                
+                // 重置所有播放按钮，只把当前的设为暂停图标
+                document.querySelectorAll('.play-btn').forEach(b => b.innerText = "▶️");
+                btn.innerText = "⏸️";
+                
+                // 播放结束监听
+                player.onended = () => {
+                    btn.innerText = "▶️";
+                    currentPlayingId = null;
+                };
+            } else {
+                alert(data.message || '由于版权或VIP限制，无法试听');
+                btn.innerText = originalText;
+            }
+        } catch (e) {
+            alert('播放失败');
+            btn.innerText = "▶️";
+        }
+    }
+
     function toggleAuth() {
         const sec = document.getElementById('auth-section');
         sec.style.display = sec.style.display === 'none' ? 'block' : 'none';
@@ -385,6 +424,11 @@ async function refreshRoomInfo() {
                                 <button onclick="likeSong('${s.id}')" style="background:#fff; border:1px solid #ffd591; color:var(--gold); border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">
                                     👍 ${s.likes || 0}
                                 </button>
+                            </div>
+                            <div style="font-size:13px; font-weight:600;">
+                                <span style="color:var(--gold)">[${s.type}]</span> ${s.name}
+                                <!-- 重点：加上这个播放按钮 -->
+                                <span class="play-btn" onclick="playSong('${s.id}')" style="cursor:pointer; font-size:12px; margin-left:5px;">▶️</span>
                             </div>
                         </div>
                     `;
@@ -554,9 +598,17 @@ async function deleteRoom(rid) {
     function renderStaging() {
         const area = document.getElementById('staging-area'), list = document.getElementById('staging-list');
         area.style.display = stagedSongs.length ? 'block' : 'none';
+        
         list.innerHTML = stagedSongs.map((s, idx) => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee; font-size:12px;">
-                <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.name} - ${s.ar}</span>
+                <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    <!-- 歌名和歌手 -->
+                    ${s.name} - ${s.ar}
+                    
+                    <!-- 【重点：添加这一句】播放按钮 -->
+                    <span class="play-btn" onclick="playSong('${s.id}')" style="cursor:pointer; margin-left:8px; display:inline-block; font-style:normal;">▶️</span>
+                </span>
+                
                 <select onchange="labelSong(${idx}, this.value)" style="width:80px; margin:0; padding:2px; font-size:11px;">
                     <option value="">标注...</option>
                     ${styles.map(t => `<option value="${t}">${t}</option>`).join('')}

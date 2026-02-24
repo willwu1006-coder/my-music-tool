@@ -363,6 +363,36 @@ app.post('/api/room/add', async (req, res) => {
     }
 });
 
+// 从协作房间移除歌曲
+app.post('/api/room/remove-song', async (req, res) => {
+    try {
+        const { roomId, songId, username } = req.body;
+        
+        // 1. 获取房间详情
+        const room = await Room.findOne({ roomId });
+        if (!room) return res.json({ success: false, message: '房间不存在' });
+
+        // 2. 查找歌曲以确认谁添加的
+        const song = room.songs.find(s => s.id === String(songId));
+        if (!song) return res.json({ success: false, message: '歌曲不在列表中' });
+
+        // 3. 权限校验：只有房主(room.owner) 或 歌曲添加者(song.addedBy) 才能删除
+        if (room.owner !== username && song.addedBy !== username) {
+            return res.json({ success: false, message: '权限不足：只有房主或添加者能删除' });
+        }
+
+        // 4. 执行移除操作 ($pull 是 MongoDB 移除数组元素的专门指令)
+        await Room.updateOne(
+            { roomId },
+            { $pull: { songs: { id: String(songId) } } }
+        );
+
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: '服务器错误' });
+    }
+});
+
 // 获取歌曲播放链接
 app.get('/api/song/url', async (req, res) => {
     try {

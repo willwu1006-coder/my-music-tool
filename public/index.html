@@ -393,49 +393,60 @@ async function refreshRoomInfo() {
         const res = await fetch(`/api/room/info?roomId=${activeRoomId}`);
         const data = await res.json();
         if (data.success) {
+            // 更新歌单标题
             document.getElementById('display-room-title').innerText = data.data.name;
             
             const list = document.getElementById('room-songs-list');
-            if (data.data.songs.length === 0) {
-                list.innerHTML = '<div style="color:#ccc; text-align:center; font-size:12px;">暂无点播，快去搜索添加</div>';
-            } else {
-                list.innerHTML = data.data.songs.map(s => {
-                    // --- 核心逻辑：处理点赞名单显示 ---
-                    let likeText = "";
-                    if (s.likedBy && s.likedBy.length > 0) {
-                        const maxShow = 3; // 最多显示 3 个名字
-                        const names = s.likedBy.slice(0, maxShow).join('、');
-                        likeText = s.likedBy.length > maxShow 
-                            ? `<span style="color:var(--gold); font-size:10px;">❤️ ${names} 等${s.likedBy.length}人已赞</span>`
-                            : `<span style="color:var(--gold); font-size:10px;">❤️ ${names} 已赞</span>`;
-                    }
-
-                    return `
-                        <div style="padding:10px 0; border-bottom:1px solid #eee; display:grid; grid-template-columns: 1fr 60px; align-items:center;">
-                            <div>
-                                <div style="font-size:13px; font-weight:600;">
-                                    <span style="color:var(--gold)">[${s.type}]</span> ${s.name}
-                                </div>
-                                <div style="font-size:11px; color:#999;">${s.ar} · @${s.addedBy}</div>
-                                <!-- 显示点赞人名单 -->
-                                <div style="margin-top:2px;">${likeText}</div>
-                            </div>
-                            <div style="text-align:right;">
-                                <button onclick="likeSong('${s.id}')" style="background:#fff; border:1px solid #ffd591; color:var(--gold); border-radius:4px; padding:2px 8px; cursor:pointer; font-size:12px;">
-                                    👍 ${s.likes || 0}
-                                </button>
-                            </div>
-                            <div style="font-size:13px; font-weight:600;">
-                                <span style="color:var(--gold)">[${s.type}]</span> ${s.name}
-                                <!-- 重点：加上这个播放按钮 -->
-                                <span class="play-btn" onclick="playSong('${s.id}')" style="cursor:pointer; font-size:12px; margin-left:5px;">▶️</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+            if (!data.data.songs || data.data.songs.length === 0) {
+                list.innerHTML = '<div style="color:#ccc; text-align:center; font-size:12px; padding:20px;">暂无点播，快去搜索添加</div>';
+                return;
             }
+
+            // 重新渲染列表
+            list.innerHTML = data.data.songs.map(s => {
+                // 处理点赞名单展示逻辑
+                let likeDetail = "";
+                if (s.likedBy && s.likedBy.length > 0) {
+                    const maxShow = 2; // 协作区紧凑点，显示2个人名
+                    const names = s.likedBy.slice(0, maxShow).join('、');
+                    likeDetail = s.likedBy.length > maxShow 
+                        ? `<span style="color:var(--gold); font-size:10px; display:block; margin-top:2px;">❤️ ${names} 等${s.likedBy.length}人已赞</span>`
+                        : `<span style="color:var(--gold); font-size:10px; display:block; margin-top:2px;">❤️ ${names} 已赞</span>`;
+                }
+
+                // 核心 HTML 结构：左侧信息（歌名+歌手+点赞人），右侧操作（点赞按钮）
+                return `
+                    <div style="padding:12px 0; border-bottom:1px solid #eee; display:grid; grid-template-columns: 1fr 65px; align-items: start; gap:10px;">
+                        <div style="overflow:hidden;">
+                            <!-- 第一行：舞种 + 歌名 + 播放按钮 -->
+                            <div style="display:flex; align-items:center; gap:5px; font-size:13px; font-weight:600;">
+                                <span style="color:var(--gold); white-space:nowrap;">[${s.type}]</span>
+                                <span style="color:#333; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.name}</span>
+                                <span class="play-btn" onclick="playSong('${s.id}')" style="cursor:pointer; font-size:12px; flex-shrink:0;">▶️</span>
+                            </div>
+                            
+                            <!-- 第二行：歌手名 · 添加者 -->
+                            <div style="font-size:11px; color:#999; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                ${s.ar} <span style="margin:0 3px; opacity:0.5;">·</span> @${s.addedBy || '匿名'}
+                            </div>
+                            
+                            <!-- 第三行：点赞名单（如果有的话） -->
+                            ${likeDetail}
+                        </div>
+
+                        <!-- 右侧点赞按钮 -->
+                        <div style="text-align:right;">
+                            <button onclick="likeSong('${s.id}')" style="background:#fff; border:1px solid #ffd591; color:var(--gold); border-radius:4px; padding:4px 8px; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:3px;">
+                                👍 <span>${s.likes || 0}</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
-    } catch(e) {}
+    } catch(e) {
+        console.error("刷新协作列表失败:", e);
+    }
 }
 
     function copyShareLink() {

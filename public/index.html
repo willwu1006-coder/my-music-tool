@@ -407,7 +407,7 @@ async function refreshRoomInfo() {
                 // --- 逻辑 A: 处理点赞名单展示 ---
                 let likeDetail = "";
                 if (s.likedBy && s.likedBy.length > 0) {
-                    const maxShow = 2; // 最多显示2个人名，多了省略
+                    const maxShow = 4; // 最多显示2个人名，多了省略
                     const names = s.likedBy.slice(0, maxShow).join('、');
                     likeDetail = s.likedBy.length > maxShow 
                         ? `<span style="color:var(--gold); font-size:10px; display:block; margin-top:2px;">❤️ ${names} 等${s.likedBy.length}人已赞</span>`

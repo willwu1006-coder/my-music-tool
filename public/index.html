@@ -702,21 +702,6 @@ function renderAll(songs) {
         </div>
     `).join('');
 }
-    // function renderListItems() {
-    //     const listContainer = document.getElementById('sortable-list');
-    //     listContainer.innerHTML = finalSongs.map((s, i) => `
-    //         <div class="song-row" data-id="${s.id}" style="cursor: grab; background: #fff;">
-    //             <span class="mono row-idx">${(i+1).toString().padStart(2,'0')}</span>
-    //             <span style="color:var(--gold); font-weight:600;">${s.type}</span>
-    //             <span style="font-weight:500;">${s.name}</span>
-    //             <span style="color:#888;">${s.ar}</span>
-    //             <div style="text-align:right; display:flex; align-items:center; justify-content:flex-end; gap:10px;">
-    //                 <span class="mono">${Math.floor(s.dt/60000)}:${Math.floor((s.dt%60000)/1000).toString().padStart(2,'0')}</span>
-    //                 <button onclick="removeSong(${s.id})" style="background:none; border:none; color:red; cursor:pointer; font-weight:bold;">×</button>
-    //             </div>
-    //         </div>
-    //     `).join('');
-    // }
     
     // 删除歌曲
     function removeSong(id) {
@@ -762,40 +747,64 @@ function renderAll(songs) {
 }
 
     // 专门给海报渲染的函数
-function renderPosterContent() {
-    const p = document.getElementById('p-container');
-    p.innerHTML = ''; // 清空旧内容
+    function renderPosterContent() {
+        const p = document.getElementById('p-container');
+        p.innerHTML = ''; // 清空旧内容
+        
+        if (!finalSongs || finalSongs.length === 0) {
+            p.innerHTML = '<div style="text-align:center; padding:50px; color:#ccc;">暂无歌曲数据</div>';
+            return;
+        }
     
-    if (!finalSongs || finalSongs.length === 0) {
-        p.innerHTML = '<div style="text-align:center; padding:50px; color:#ccc;">暂无歌曲数据</div>';
-        return;
+        finalSongs.forEach((s, i) => {
+            const timeStr = Math.floor(s.dt/60000) + ":" + Math.floor((s.dt%60000)/1000).toString().padStart(2,'0');
+            
+            // 采用和预览列表类似的上下结构，确保美观且对齐
+            p.innerHTML += `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid #F9F7F0;">
+                    <span style="width:40px; font-family:'JetBrains Mono'; font-size:14px; color:#bbb;">${(i+1).toString().padStart(2,'0')}</span>
+                    <span style="width:70px; color:var(--gold); font-weight:bold; font-size:14px;">${s.type}</span>
+                    <div style="flex:1; margin: 0 15px; overflow:hidden;">
+                        <div style="font-weight:600; font-size:16px; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
+                        <div style="font-size:12px; color:#999; margin-top:2px;">${s.ar}</div>
+                    </div>
+                    <span style="width:50px; text-align:right; font-family:'JetBrains Mono'; font-size:13px; color:#bbb;">${timeStr}</span>
+                </div>`;
+        });
+    
+        // 更新日期和总计（可选）
+        const title = document.getElementById('display-room-title').innerText;
+        document.getElementById('p-date').innerText = title + " - " + new Date().toLocaleDateString();
     }
 
-    finalSongs.forEach((s, i) => {
-        const timeStr = Math.floor(s.dt/60000) + ":" + Math.floor((s.dt%60000)/1000).toString().padStart(2,'0');
-        
-        // 采用和预览列表类似的上下结构，确保美观且对齐
-        p.innerHTML += `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid #F9F7F0;">
-                <span style="width:40px; font-family:'JetBrains Mono'; font-size:14px; color:#bbb;">${(i+1).toString().padStart(2,'0')}</span>
-                <span style="width:70px; color:var(--gold); font-weight:bold; font-size:14px;">${s.type}</span>
-                <div style="flex:1; margin: 0 15px; overflow:hidden;">
-                    <div style="font-weight:600; font-size:16px; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
-                    <div style="font-size:12px; color:#999; margin-top:2px;">${s.ar}</div>
-                </div>
-                <span style="width:50px; text-align:right; font-family:'JetBrains Mono'; font-size:13px; color:#bbb;">${timeStr}</span>
-            </div>`;
-    });
-
-    // 更新日期和总计（可选）
-    const title = document.getElementById('display-room-title').innerText;
-    document.getElementById('p-date').innerText = title + " - " + new Date().toLocaleDateString();
-}
-
-    function downloadPoster() {
-        html2canvas(document.getElementById('poster-wrap'), { scale: 2 }).then(c => {
-            const l = document.createElement('a'); l.download = 'Dance_Setlist.png'; l.href = c.toDataURL(); l.click();
-        });
+    async function downloadPoster() {
+        const btn = event.target;
+        const originalText = btn.innerText;
+        btn.innerText = "[ 正在生成... ]";
+    
+        // 1. 先把数据填进隐藏的海报容器
+        renderPosterContent();
+    
+        // 2. 给浏览器一点点时间（100ms）来绘制文字
+        setTimeout(() => {
+            const wrap = document.getElementById('poster-wrap');
+            html2canvas(wrap, { 
+                scale: 2, // 2倍清晰度
+                useCORS: true, // 允许跨域图片
+                backgroundColor: '#ffffff',
+                logging: false
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `DanceSetlist_${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                btn.innerText = originalText;
+            }).catch(err => {
+                console.error("海报生成失败:", err);
+                alert("海报生成失败，请重试");
+                btn.innerText = originalText;
+            });
+        }, 100);
     }
 </script>
 </body>

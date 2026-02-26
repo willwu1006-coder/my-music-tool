@@ -407,7 +407,7 @@ async function toggleFavorite(rid) {
 async function refreshRoomInfo() {
     if (!activeRoomId) return;
     try {
-        const res = await fetch(`/api/fetch/room/info?roomId=${activeRoomId}&username=${currentUsername}`);
+        const res = await fetch(`/api/room/info?roomId=${activeRoomId}&username=${currentUsername}`);
         const data = await res.json();
         if (data.success) {
             // 1. 更新歌单大标题
@@ -703,6 +703,7 @@ async function startLogin() {
                 <select onchange="labelSong(${idx}, this.value)" style="width:80px; margin:0; padding:2px; font-size:11px;">
                     <option value="">标注...</option>
                     ${styles.map(t => `<option value="${t}">${t}</option>`).join('')}
+                    <option value="CUSTOM">自定义...</option> <!-- 补上这一行 -->
                     <option value="SKIP">跳过</option>
                 </select>
             </div>
@@ -715,7 +716,7 @@ async function startLogin() {
         
             // --- 补全处理自定义输入 ---
             if(type === 'CUSTOM') {
-                const userType = prompt("请输入该舞曲的舞种名称 (例如: 恰恰, 自由舞):");
+                const userType = prompt("请输入该舞曲的舞种名称:");
                 if(!userType || userType.trim() === "") {
                     renderStaging(); // 刷新一下重置选择框
                     return;
@@ -724,7 +725,7 @@ async function startLogin() {
             }
 
             if(type && type !== 'SKIP') {
-                const song = { ...stagedSongs[idx], type: type };
+                const song = { ...stagedSongs[idx], type: finalType };
                 
             if (activeRoomId) {
                     // 发送到服务器

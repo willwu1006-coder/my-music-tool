@@ -425,7 +425,7 @@ async function refreshRoomInfo() {
                 </span>`;
 
             document.getElementById('display-room-title').innerHTML = `
-                ${data.data.name} ${favBtnHtml}
+                ${data.data.name} ${favBtnHtml}`;
             
             const list = document.getElementById('room-songs-list');
             if (!data.data.songs || data.data.songs.length === 0) {
@@ -519,7 +519,7 @@ async function refreshRoomInfo() {
     }
 }
 
-    function copyShareLink() {
+function copyShareLink() {
         const input = document.getElementById('share-link-input');
         input.select();
         document.execCommand('copy');
@@ -585,7 +585,7 @@ async function deleteRoom(rid) {
 }
 
     // --- 账号系统 ---
-    async function handleAuth(type) {
+async function handleAuth(type) {
         const username = document.getElementById('u-name').value, password = document.getElementById('u-pass').value;
         if(!username || !password) return alert('请填写账号密码');
         const res = await fetch(`/api/auth/${type}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
@@ -608,7 +608,7 @@ async function deleteRoom(rid) {
     
 
     // 更新网易云状态标识
-    function updateLoginStatus(source) {
+function updateLoginStatus(source) {
         if(userCookie) {
             document.getElementById('l-btn').innerText = `网易云：已连接 (${source})`;
             document.getElementById('l-btn').style.color = 'green';
@@ -618,14 +618,14 @@ async function deleteRoom(rid) {
     }
 
 
-    async function syncCookie() {
+async function syncCookie() {
         if(currentUsername && userCookie) {
             await fetch('/api/auth/update-cookie', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: currentUsername, cookie: userCookie }) });
         }
     }
 
     // 网易云连接
-    async function startLogin() {
+async function startLogin() {
         const box = document.getElementById('qr-view'), img = document.getElementById('qr-img');
         box.style.display = 'block';
         const { data: { unikey } } = await (await fetch('/api/login/key')).json();
@@ -710,10 +710,23 @@ async function deleteRoom(rid) {
     }
 
     function labelSong(idx, type) {
+            if(!type) return;
+            let finalType = type;
+        
+            // --- 补全处理自定义输入 ---
+            if(type === 'CUSTOM') {
+                const userType = prompt("请输入该舞曲的舞种名称 (例如: 恰恰, 自由舞):");
+                if(!userType || userType.trim() === "") {
+                    renderStaging(); // 刷新一下重置选择框
+                    return;
+                }
+                finalType = userType.trim();
+            }
+
             if(type && type !== 'SKIP') {
                 const song = { ...stagedSongs[idx], type: type };
                 
-                if (activeRoomId) {
+            if (activeRoomId) {
                     // 发送到服务器
                     fetch('/api/room/add', {
                         method: 'POST',
@@ -949,6 +962,21 @@ function renderAll(songs) {
             });
         }, 100);
     }
+    
+    // 状态提示气泡
+function showStatusTip(msg) {
+    let tip = document.getElementById('status-tip');
+    if (!tip) {
+        // 如果页面没有提示框，动态创建一个
+        tip = document.createElement('div');
+        tip.id = 'status-tip';
+        tip.style = "display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:#fff; padding:10px 20px; border-radius:30px; font-size:12px; z-index:10000; box-shadow:0 4px 12px rgba(0,0,0,0.2);";
+        document.body.appendChild(tip);
+    }
+    tip.innerText = msg;
+    tip.style.display = 'block';
+    setTimeout(() => { tip.style.display = 'none'; }, 2000);
+}
 </script>
 </body>
 </html>

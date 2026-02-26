@@ -18,15 +18,6 @@ const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017/dance_tool
 mongoose.connect(MONGO_URL)
   .then(() => console.log('✅ MongoDB 已连接'))
   .catch(err => console.error('❌ 数据库连接失败:', err));
-mongoose.connection.once('open', async () => {
-    try {
-        console.log('--- 正在尝试拆除定时炸弹 ---');
-        await mongoose.connection.db.collection('rooms').dropIndex('createdAt_1');
-        console.log('--- 成功：歌单已设为永久保存 ---');
-    } catch (e) {
-        console.log('--- 提示：索引可能已经被删除了 ---');
-    }
-});
 
 // --- 定义模型 (替代原来的 users.json 和 rooms.json) ---
 

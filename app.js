@@ -345,6 +345,14 @@ app.post('/api/room/add', async (req, res) => {
             likes: 0,
             likedBy: []
         };
+        const room = await Room.findOne({ roomId: roomId });
+        if (!room) return res.json({ success: false, message: '找不到该房间' });
+
+        // 检查 songs 数组中是否已经存在该 ID
+        const isDuplicate = room.songs && room.songs.some(s => String(s.id) === songIdStr);
+        if (isDuplicate) {
+            return res.json({ success: false, message: '这首歌已经在协作清单里啦，不用重复添加' });
+        }
 
         // 3. 执行更新
         const result = await Room.updateOne(

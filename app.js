@@ -25,7 +25,8 @@ mongoose.connect(MONGO_URL)
 const User = mongoose.model('User', new mongoose.Schema({
     username: { type: String, unique: true, required: true },
     password: { type: String, required: true },
-    neteaseCookie: String
+    neteaseCookie: String,
+    favorites: { type: [String], default: [] }
 }));
 
 // 协作房间模型 - 修改为最通用的 Array 类型
@@ -238,6 +239,7 @@ app.get('/api/room/info', async (req, res) => {
     }
 });
 
+
 // 修改房间名
 app.post('/api/room/update-name', async (req, res) => {
     const { roomId, name } = req.body;
@@ -245,23 +247,21 @@ app.post('/api/room/update-name', async (req, res) => {
     res.json({ success: true });
 });
 
-// 获取当前用户创建的所有房间
 app.get('/api/room/my-rooms', async (req, res) => {
     try {
         const { username } = req.query;
-        if (!username) return res.json({ success: false });
+        const user = await User.findOne({ username });
+        if (!user) return res.json({ success: false });
 
-        // 查询 owner 为该用户的所有房间，按时间倒序排列，取最近 10 个
-        const rooms = await Room.find({ owner: username })
-                                .select('roomId name createdAt')
-                                .sort({ createdAt: -1 })
-                                .limit(10)
-                                .lean();
+        // 1. 查找我创建的
+        const owned = await Room.find({ owner: username }).select('roomId name owner').sort({ createdAt: -1 }).lean();
+        
+        // 2. 查找我收藏的 (排除掉自己创建的，避免重复显示)
+        const favoritedIds = user.favorites.filter(id => !owned.some(r => r.roomId === id));
+        const favorited = await Room.find({ roomId: { $in: favoritedIds } }).select('roomId name owner').lean();
 
-        res.json({ success: true, rooms });
-    } catch (e) {
-        res.json({ success: false });
-    }
+        res.json({ success: true, owned, favorited });
+    } catch (e) { res.json({ success: false }); }
 });
 
 // 删除协作房间
@@ -390,6 +390,29 @@ app.post('/api/room/remove-song', async (req, res) => {
         res.json({ success: true });
     } catch (e) {
         res.json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 收藏或取消收藏房间
+app.post('/api/room/favorite', async (req, res) => {
+    try {
+        const { roomId, username } = req.body;
+        if (!username) return res.json({ success: false, message: '请先登录' });
+
+        const user = await User.findOne({ username });
+        const isFavorited = user.favorites.includes(roomId);
+
+        if (isFavorited) {
+            // 如果已收藏，则移除 ($pull)
+            await User.updateOne({ username }, { $pull: { favorites: roomId } });
+            res.json({ success: true, action: 'removed' });
+        } else {
+            // 如果未收藏，则添加 ($addToSet 确保不重复)
+            await User.updateOne({ username }, { $addToSet: { favorites: roomId } });
+            res.json({ success: true, action: 'added' });
+        }
+    } catch (e) {
+        res.json({ success: false });
     }
 });
 

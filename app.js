@@ -349,6 +349,7 @@ app.post('/api/room/add', async (req, res) => {
         if (!room) return res.json({ success: false, message: '找不到该房间' });
 
         // 检查 songs 数组中是否已经存在该 ID
+        const songIdStr = String(song.id || ''); 
         const isDuplicate = room.songs && room.songs.some(s => String(s.id) === songIdStr);
         if (isDuplicate) {
             return res.json({ success: false, message: '这首歌已经在协作清单里啦，不用重复添加' });

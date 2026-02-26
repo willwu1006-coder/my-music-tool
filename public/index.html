@@ -385,16 +385,47 @@ async function likeSong(songId) {
         alert(data.message); // 会提示“您已经点过赞啦！”
     }
 }
+    
+async function toggleFavorite(rid) {
+    if (!currentUsername) return alert('请先登录网页账号');
+    try {
+        const res = await fetch('/api/room/favorite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roomId: rid, username: currentUsername })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showStatusTip(data.action === 'added' ? '⭐ 已加入收藏' : '横 收藏已取消');
+            loadMyRooms(); // 刷新列表
+            // 这里可以简单刷新一下 UI 上的星星颜色
+        }
+    } catch (e) { alert('操作失败'); }
+}
 
 // 修改刷新函数，展示点赞和歌手
 async function refreshRoomInfo() {
     if (!activeRoomId) return;
     try {
-        const res = await fetch(`/api/room/info?roomId=${activeRoomId}`);
+        const res = await fetch(`/api/fetch/room/info?roomId=${activeRoomId}&username=${currentUsername}`);
         const data = await res.json();
         if (data.success) {
             // 1. 更新歌单大标题
             document.getElementById('display-room-title').innerText = data.data.name;
+            const isFav = data.isFavorited;
+            const starIcon = isFav ? '★' : '☆';
+            const starColor = isFav ? 'var(--gold)' : '#ccc'
+            // 房主不需要收藏自己的房间
+            const isOwner = currentUsername === data.data.owner;
+            const favBtnHtml = isOwner ? "" : `
+                <span onclick="toggleFavorite('${activeRoomId}')" 
+                      style="cursor:pointer; font-size:20px; margin-left:10px; color:${starColor}; vertical-align:middle;" 
+                      title="${isFav ? '取消收藏' : '加入收藏'}">
+                    ${starIcon}
+                </span>`;
+
+            document.getElementById('display-room-title').innerHTML = `
+                ${data.data.name} ${favBtnHtml}
             
             const list = document.getElementById('room-songs-list');
             if (!data.data.songs || data.data.songs.length === 0) {
@@ -498,30 +529,40 @@ async function refreshRoomInfo() {
     // 1. 加载“我的房间”列表
 async function loadMyRooms() {
     if (!currentUsername) return;
-    try {
-        const res = await fetch(`/api/room/my-rooms?username=${currentUsername}`);
-        const data = await res.json();
-        const container = document.getElementById('my-rooms-container');
-        const list = document.getElementById('my-rooms-list');
+    const res = await fetch(`/api/room/my-rooms?username=${currentUsername}`);
+    const data = await res.json();
+    const list = document.getElementById('my-rooms-list');
+    
+    if (data.success) {
+        document.getElementById('my-rooms-container').style.display = 'block';
         
-        if (data.success && data.rooms.length > 0) {
-            container.style.display = 'block';
-            list.innerHTML = data.rooms.map(r => `
-                <div onclick="joinRoom('${r.roomId}')" style="position:relative; cursor:pointer; padding:10px; background:#fdfcf8; border-radius:6px; font-size:12px; border:1px solid #eee; transition:0.2s;">
-                    <div style="font-weight:600; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:15px;">${r.name}</div>
-                    <div style="color:#bbb; font-size:10px; margin-top:4px;">ID: ${r.roomId}</div>
-                    
-                    <!-- 删除按钮：使用 stopPropagation 防止触发 joinRoom -->
-                    <span onclick="event.stopPropagation(); deleteRoom('${r.roomId}')" 
-                          style="position:absolute; top:5px; right:8px; color:#ccc; font-size:16px; font-weight:bold; padding:2px 5px;"
-                          onmouseover="this.style.color='red'" 
-                          onmouseout="this.style.color='#ccc'">×</span>
-                </div>
-            `).join('');
-        } else {
-            container.style.display = 'none';
+        let html = "";
+        // 渲染我创建的
+        if (data.owned.length > 0) {
+            html += `<div style="grid-column: 1/-1; font-size:10px; color:#999; margin-top:5px;">我创建的:</div>`;
+            html += data.owned.map(r => renderRoomItem(r, true)).join('');
         }
-    } catch (e) { console.error('加载历史失败'); }
+        // 渲染收藏的
+        if (data.favorited.length > 0) {
+            html += `<div style="grid-column: 1/-1; font-size:10px; color:#999; margin-top:5px;">收藏的协作:</div>`;
+            html += data.favorited.map(r => renderRoomItem(r, false)).join('');
+        }
+        list.innerHTML = html;
+    }
+}
+
+function renderRoomItem(r, isOwner) {
+    const tag = isOwner ? "" : `<small style="color:var(--gold)"> @${r.owner}</small>`;
+    return `
+        <div onclick="joinRoom('${r.roomId}')" style="position:relative; cursor:pointer; padding:10px; background:#fdfcf8; border-radius:6px; font-size:12px; border:1px solid #eee;">
+            <div style="font-weight:600; color:var(--accent);">${r.name}${tag}</div>
+            <div style="color:#bbb; font-size:10px;">ID: ${r.roomId}</div>
+            ${isOwner ? 
+                `<span onclick="event.stopPropagation(); deleteRoom('${r.roomId}')" style="position:absolute; top:5px; right:8px; color:#ccc;">×</span>` : 
+                `<span onclick="event.stopPropagation(); toggleFavorite('${r.roomId}')" style="position:absolute; top:5px; right:8px; color:var(--gold);">★</span>`
+            }
+        </div>
+    `;
 }
 async function deleteRoom(rid) {
     if(!confirm('确定要删除这个协作房间吗？数据将无法找回。')) return;

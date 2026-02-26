@@ -59,30 +59,36 @@ async function getRealId(input) {
     let str = input.trim();
     if (!str) return null;
 
-    // 1. 如果输入本来就是纯数字 ID
+    // 1. 如果输入本身就是纯数字 ID
     if (/^\d+$/.test(str)) return str;
 
-    // 2. 尝试从字符串中提取 id=xxxx 这种格式 (适配电脑版链接)
+    // 2. 先尝试直接从这段文字中抠出带有 id= 的数字 (适配电脑版长链接)
     const idMatch = str.match(/[?&]id=(\d+)/);
     if (idMatch) return idMatch[1];
 
-    // 3. 尝试从 /playlist/xxxx 这种格式提取 (适配部分手机分享链接)
+    // 3. 尝试直接从这段文字中抠出 /playlist/ 后的数字 (适配部分手机长链接)
     const pathMatch = str.match(/\/playlist\/(\d+)/);
     if (pathMatch) return pathMatch[1];
 
-    // 4. 处理短链接 (如 https://163cn.tv/xxxx)
-    if (str.startsWith('http')) {
+    // 4. 如果上面都没匹配到，说明可能是个短链接 (如 163cn.tv)
+    // 重点：我们从这一堆杂乱文字中抠出 http 开头的 URL
+    const urlMatch = str.match(/https?:\/\/[^\s/$.?#].[^\s]*/);
+    if (urlMatch) {
+        const url = urlMatch[0];
         try {
-            // 禁止自动跳转，手动获取 location
-            const res = await axios.get(str, { 
+            // 请求这个链接，获取重定向后的真实地址
+            const res = await axios.get(url, { 
                 maxRedirects: 5, 
                 timeout: 10000,
-                headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/04.1' }
+                headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 13)' }
             });
             const finalUrl = res.request.res.responseUrl || '';
+            
+            // 对重定向后的真实长链接再次进行 ID 匹配
             const finalMatch = finalUrl.match(/[?&]id=(\d+)/) || finalUrl.match(/\/playlist\/(\d+)/);
             return finalMatch ? finalMatch[1] : null;
         } catch (e) {
+            console.error('短链解析失败:', e.message);
             return null;
         }
     }

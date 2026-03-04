@@ -675,12 +675,12 @@ app.post('/api/sync', async (req, res) => {
 app.get('/api/login/key', async (req, res) => res.json((await netease.login_qr_key({ realIP: '116.228.89.233' })).body));
 app.get('/api/login/create', async (req, res) => res.json((await netease.login_qr_create({ key: req.query.key, qrimg: true, realIP: '116.228.89.233' })).body));
 app.get('/api/login/check', async (req, res) => res.json((await netease.login_qr_check({ key: req.query.key, realIP: '116.228.89.233' })).body));
-// app.get('/api/search', async (req, res) => {
-//     try {
-//         const result = await netease.cloudsearch({ keywords: req.query.keywords, limit: 15 });
-//         res.json({ success: true, data: result.body.result.songs || [] });
-//     } catch(e) { res.json({ success: false }); }
-// });
+app.get('/api/search', async (req, res) => {
+    try {
+        const result = await netease.cloudsearch({ keywords: req.query.keywords, limit: 15 });
+        res.json({ success: true, data: result.body.result.songs || [] });
+    } catch(e) { res.json({ success: false }); }
+});
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`V2 PRO Fixed Running`));

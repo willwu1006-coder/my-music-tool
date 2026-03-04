@@ -192,7 +192,7 @@ app.get('/api/playlist/info', async (req, res) => {
                 id: s.id, 
                 name: s.name, 
                 ar: formatArtists(s), 
-                pic: getPic(s),
+                pic: getSongPic(s),
                 dt: s.dt || s.duration 
             })) 
         });

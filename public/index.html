@@ -212,15 +212,17 @@
                 <input type="radio" name="gen-mode" value="weighted" style="width: auto; margin: 0;"> 权重随机模式
             </label>
         </div>
-        <div id="weight-config-area" style="display: none; margin-bottom: 20px; padding: 15px; background: #fafafa; border-radius: 4px;">
+        <div id="weight-config-area" style="display: block; margin-bottom: 20px; padding: 15px; background: #fafafa; border-radius: 4px;">
+            <span style="font-size: 11px; color: var(--gold); font-weight: 700; display: block; margin-bottom: 10px;">出现概率/权重 (0 到 1 之间)</span>
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;" id="weight-inputs">
-                <div><label style="font-size: 10px; color: #999;">慢三</label><input type="number" data-type="慢三" value="1" min="0" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
-                <div><label style="font-size: 10px; color: #999;">平四</label><input type="number" data-type="平四" value="1" min="0" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
-                <div><label style="font-size: 10px; color: #999;">伦巴</label><input type="number" data-type="伦巴" value="1" min="0" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
-                <div><label style="font-size: 10px; color: #999;">并四</label><input type="number" data-type="并四" value="1" min="0" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
-                <div><label style="font-size: 10px; color: #999;">快三</label><input type="number" data-type="快三" value="1" min="0" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
-                <div><label style="font-size: 10px; color: #999;">慢四</label><input type="number" data-type="慢四" value="1" min="0" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
-                <div><label style="font-size: 10px; color: #999;">吉特巴</label><input type="number" data-type="吉特巴" value="1" min="0" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
+                <!-- 注意：step="0.1" 允许输入小数，value 默认为 1 -->
+                <div><label style="font-size: 10px; color: #999;">慢三</label><input type="number" data-type="慢三" value="1" min="0" max="1" step="0.1" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
+                <div><label style="font-size: 10px; color: #999;">平四</label><input type="number" data-type="平四" value="1" min="0" max="1" step="0.1" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
+                <div><label style="font-size: 10px; color: #999;">伦巴</label><input type="number" data-type="伦巴" value="1" min="0" max="1" step="0.1" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
+                <div><label style="font-size: 10px; color: #999;">并四</label><input type="number" data-type="并四" value="0.5" min="0" max="1" step="0.1" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
+                <div><label style="font-size: 10px; color: #999;">快三</label><input type="number" data-type="快三" value="0.5" min="0" max="1" step="0.1" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
+                <div><label style="font-size: 10px; color: #999;">慢四</label><input type="number" data-type="慢四" value="1" min="0" max="1" step="0.1" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
+                <div><label style="font-size: 10px; color: #999;">吉特巴</label><input type="number" data-type="吉特巴" value="1" min="0" max="1" step="0.1" style="padding: 2px 0; margin: 0; font-size: 12px;"></div>
             </div>
         </div>
         <input type="number" id="duration" placeholder="目标总时长 (分钟)">
@@ -770,7 +772,8 @@ async function startLogin() {
         
         const weights = {};
         document.querySelectorAll('#weight-inputs input').forEach(el => {
-            weights[el.getAttribute('data-type')] = parseInt(el.value) || 0;
+            // 使用 parseFloat 确保获取的是浮点数
+            weights[el.getAttribute('data-type')] = parseFloat(el.value) || 0;
         });
         const msg = document.getElementById('msg');
         

@@ -718,25 +718,40 @@ async function startLogin() {
             const data = await res.json();
             
             if (data.success) {
-                if (data.playlists.length === 0) {
-                    grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; font-size:12px; color:#999;">未找到您创建的歌单</div>';
-                    return;
+                // 分类：创建的和收藏的
+                const myCreated = data.playlists.filter(p => p.isMine);
+                const myFav = data.playlists.filter(p => !p.isMine);
+    
+                let html = "";
+                
+                if (myCreated.length > 0) {
+                    html += `<div style="grid-column: 1/-1; font-size:10px; color:var(--gold); font-weight:700; margin-top:5px;">我创建的:</div>`;
+                    html += myCreated.map(p => renderPlaylistItem(p)).join('');
                 }
-                grid.innerHTML = data.playlists.map(p => `
-                    <div onclick="importFromMyPlaylist('${p.id}')" style="display:flex; align-items:center; gap:8px; padding:8px; background:#fff; border:1px solid #eee; border-radius:6px; cursor:pointer; transition:0.2s; overflow:hidden;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='#eee'">
-                        <img src="${p.cover}?param=50y50" style="width:30px; height:30px; border-radius:4px; flex-shrink:0; object-fit:cover;">
-                        <div style="overflow:hidden;">
-                            <div style="font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--accent);">${p.name}</div>
-                            <div style="font-size:9px; color:#bbb;">${p.trackCount} 首</div>
-                        </div>
-                    </div>
-                `).join('');
+                
+                if (myFav.length > 0) {
+                    html += `<div style="grid-column: 1/-1; font-size:10px; color:#999; font-weight:700; margin-top:15px;">收藏的歌单:</div>`;
+                    html += myFav.map(p => renderPlaylistItem(p)).join('');
+                }
+    
+                grid.innerHTML = html || '<div style="grid-column: 1/-1; text-align:center; font-size:12px;">暂无歌单</div>';
             } else {
                 grid.innerHTML = `<div style="grid-column: 1/-1; padding:20px; text-align:center; color:red; font-size:12px;">${data.message}</div>`;
             }
         } catch (e) {
-            grid.innerHTML = '<div style="grid-column: 1/-1; padding:20px; text-align:center; color:red; font-size:12px;">网络请求失败</div>';
+            grid.innerHTML = '<div style="grid-column: 1/-1; padding:20px; text-align:center; color:red; font-size:12px;">请求失败</div>';
         }
+    }
+    function renderPlaylistItem(p) {
+        return `
+            <div onclick="importFromMyPlaylist('${p.id}')" style="display:flex; align-items:center; gap:8px; padding:8px; background:#fff; border:1px solid #eee; border-radius:6px; cursor:pointer; transition:0.2s; overflow:hidden;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='#eee'">
+                <img src="${p.cover}?param=50y50" style="width:30px; height:30px; border-radius:4px; flex-shrink:0; object-fit:cover;">
+                <div style="overflow:hidden;">
+                    <div style="font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--accent);">${p.name}</div>
+                    <div style="font-size:9px; color:#bbb;">${p.trackCount} 首</div>
+                </div>
+            </div>
+        `;
     }
     
     // 选择具体某个歌单后的处理

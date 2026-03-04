@@ -459,12 +459,12 @@ app.get('/api/user/playlists', async (req, res) => {
         const { cookie } = req.query;
         if (!cookie) return res.json({ success: false, message: '未登录' });
 
-        // 1. 先获取用户信息 (拿到 uid)
+        // 1. 获取当前用户 UID
         const statusRes = await netease.login_status({ cookie });
-        const uid = statusRes.body.data.profile.userId;
+        const myUid = statusRes.body.data.profile.userId;
 
-        // 2. 获取该用户的歌单列表
-        const result = await netease.user_playlist({ uid, cookie, realIP: getIp(req) });
+        // 2. 获取歌单列表 (包含创建和收藏)
+        const result = await netease.user_playlist({ uid: myUid, cookie, realIP: getIp(req) });
         
         const playlists = result.body.playlist.map(p => ({
             id: p.id,
@@ -477,7 +477,7 @@ app.get('/api/user/playlists', async (req, res) => {
 
         res.json({ success: true, playlists });
     } catch (e) {
-        res.json({ success: false, message: '获取歌单列表失败' });
+        res.json({ success: false, message: '获取歌单失败' });
     }
 });
 

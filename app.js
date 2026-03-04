@@ -466,12 +466,13 @@ app.get('/api/user/playlists', async (req, res) => {
         // 2. 获取该用户的歌单列表
         const result = await netease.user_playlist({ uid, cookie, realIP: getIp(req) });
         
-        // 过滤掉用户收藏的歌单，只保留用户自己创建的
         const playlists = result.body.playlist.map(p => ({
             id: p.id,
             name: p.name,
             cover: p.coverImgUrl,
-            trackCount: p.trackCount
+            trackCount: p.trackCount,
+            // 重点：判断是否为我创建的 (userId 一致即为创建，否则为收藏)
+            isMine: p.userId === myUid 
         }));
 
         res.json({ success: true, playlists });

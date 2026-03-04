@@ -501,9 +501,11 @@ app.post('/api/calculate', async (req, res) => {
         let roundCounter = 0; 
         let lastType = null;
         let hasMore = true;
+        let safetyIdx = 0;
 
-        while (currentMs < targetMs && hasMore) {
+        while (currentMs < targetMs && hasMore && safetyIdx < 500) {
             hasMore = false;
+            safetyIdx++;
             if (mode === 'weighted') {
                 // --- 权重随机模式（带保护） ---
                 // 传入 lastType 进行避让
@@ -534,8 +536,21 @@ app.post('/api/calculate', async (req, res) => {
                 // 原有的顺序模式自然保证了不会连续（0-1-2-3-4-5-6循环）
                 for (let i = 0; i < 7; i++) {
                     const typeName = DEFAULT_PLAYLISTS[i].name;
-                    let song = findSong(typeName);
-                    if (song) { addSong(song); hasMore = true; }
+                    const prob = weights[typeName] ?? 1.0; // 获取该舞种的接受概率
+
+                    // 掷骰子：只有随机数小于设置值，才尝试放这首歌
+                    if (Math.random() < prob) {
+                        let song = findSong(typeName);
+                        if (song) {
+                            if(addSong(song)) {
+                                hasMore = true;
+                            }
+                        }
+                    } else {
+                        // 如果没中，我们认为这次循环里“跳过”了这个舞种，去看下一个
+                        // 但为了防止整轮都没中导致 hasMore 变为 false，只要有权重就不停
+                        if (prob > 0) hasMore = true; 
+                    }
                     if (currentMs >= targetMs) break;
                 }
                 if (useDefaultFill && collectivePool.length > 0 && currentMs < targetMs) {

@@ -453,6 +453,33 @@ app.get('/api/song/url', async (req, res) => {
     }
 });
 
+// 获取当前登录用户的歌单列表
+app.get('/api/user/playlists', async (req, res) => {
+    try {
+        const { cookie } = req.query;
+        if (!cookie) return res.json({ success: false, message: '未登录' });
+
+        // 1. 先获取用户信息 (拿到 uid)
+        const statusRes = await netease.login_status({ cookie });
+        const uid = statusRes.body.data.profile.userId;
+
+        // 2. 获取该用户的歌单列表
+        const result = await netease.user_playlist({ uid, cookie, realIP: getIp(req) });
+        
+        // 过滤掉用户收藏的歌单，只保留用户自己创建的
+        const playlists = result.body.playlist.map(p => ({
+            id: p.id,
+            name: p.name,
+            cover: p.coverImgUrl,
+            trackCount: p.trackCount
+        }));
+
+        res.json({ success: true, playlists });
+    } catch (e) {
+        res.json({ success: false, message: '获取歌单列表失败' });
+    }
+});
+
 // 核心生成接口
 app.post('/api/calculate', async (req, res) => {
     try {

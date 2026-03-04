@@ -696,9 +696,26 @@ async function startLogin() {
     async function searchSong() {
         const kw = document.getElementById('search-in').value;
         if(!kw) return;
-        const res = await (await fetch(`/api/search?keywords=${kw}`)).json();
-        stagedSongs = res.data.map(s => ({ id: s.id, name: s.name, ar: s.ar ? s.ar.map(a=>a.name).join('/') : "未知", dt: s.dt || s.duration }));
-        renderStaging();
+    
+        // 1. UI 反馈
+        const area = document.getElementById('staging-area');
+        const list = document.getElementById('staging-list');
+        area.style.display = 'block';
+        list.innerHTML = '<div style="padding:20px; font-size:12px; color:var(--gold);">正在努力搜索中...</div>';
+    
+        try {
+            const res = await fetch(`/api/search?keywords=${encodeURIComponent(kw)}`);
+            const data = await res.json();
+            
+            if(data.success && data.data.length > 0) {
+                stagedSongs = data.data; 
+                renderStaging(); 
+            } else {
+                list.innerHTML = '<div style="padding:20px; font-size:12px; color:#999;">未找到相关歌曲，换个词试试？</div>';
+            }
+        } catch(e) { 
+            list.innerHTML = '<div style="padding:20px; font-size:12px; color:red;">搜索接口连接失败</div>';
+        }
     }
     
     async function importPlaylist() {

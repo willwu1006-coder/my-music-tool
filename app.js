@@ -123,6 +123,19 @@ function pickTypeByWeight(weights, excludeType = null) {
     }
     return entries[0][0];
 }
+
+
+const formatArtists = (song) => {
+    const list = song.ar || song.artists || [];
+    return Array.isArray(list) ? list.map(a => a.name).join('/') : "未知歌手";
+};
+const getSongPic = (song) => {
+    if (!song) return "";
+    // 兼容 al (歌单接口) 或 album (搜索接口)
+    const album = song.al || song.album || {};
+    return album.picUrl || "";
+};
+
 // 【新】搜索接口
 app.get('/api/search', async (req, res) => {
     try {
@@ -152,17 +165,6 @@ app.get('/api/search', async (req, res) => {
         res.json({ success: false }); 
     }
 });
-
-const formatArtists = (song) => {
-    const list = song.ar || song.artists || [];
-    return Array.isArray(list) ? list.map(a => a.name).join('/') : "未知歌手";
-};
-const getSongPic = (song) => {
-    if (!song) return "";
-    // 兼容 al (歌单接口) 或 album (搜索接口)
-    const album = song.al || song.album || {};
-    return album.picUrl || "";
-};
 
 // 修改获取歌单详情的接口
 app.get('/api/playlist/info', async (req, res) => {

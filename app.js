@@ -127,14 +127,41 @@ function pickTypeByWeight(weights, excludeType = null) {
 app.get('/api/search', async (req, res) => {
     try {
         const { keywords } = req.query;
-        const result = await netease.cloudsearch({ keywords, limit: 12 });
-        res.json({ success: true, data: result.body.result.songs || [] });
-    } catch (e) { res.json({ success: false }); }
+        // 增加 realIP 提高接口稳定性
+        const result = await netease.cloudsearch({ 
+            keywords, 
+            limit: 18, 
+            realIP: getIp(req) 
+        });
+
+        // 获取原始歌曲列表
+        const rawSongs = result.body.result.songs || [];
+
+        // 【核心修改】：通过 map 转换，提取我们需要且整洁的字段
+        const cleanedSongs = rawSongs.map(s => ({
+            id: s.id,
+            name: s.name,
+            ar: formatArtists(s), // 使用刚才优化过的歌手解析函数
+            pic: getSongPic(s),   // 使用提取封面的函数
+            dt: s.dt || s.duration // 兼容不同的时长字段名
+        }));
+
+        res.json({ success: true, data: cleanedSongs });
+    } catch (e) { 
+        console.error('搜索报错:', e);
+        res.json({ success: false }); 
+    }
 });
 
 const formatArtists = (song) => {
     const list = song.ar || song.artists || [];
     return Array.isArray(list) ? list.map(a => a.name).join('/') : "未知歌手";
+};
+const getSongPic = (song) => {
+    if (!song) return "";
+    // 兼容 al (歌单接口) 或 album (搜索接口)
+    const album = song.al || song.album || {};
+    return album.picUrl || "";
 };
 
 // 修改获取歌单详情的接口
@@ -165,6 +192,7 @@ app.get('/api/playlist/info', async (req, res) => {
                 id: s.id, 
                 name: s.name, 
                 ar: formatArtists(s), 
+                pic: getPic(s),
                 dt: s.dt || s.duration 
             })) 
         });
@@ -345,6 +373,7 @@ app.post('/api/room/add', async (req, res) => {
             id: String(song.id || ''),
             name: String(song.name || '未知歌名'),
             ar: String(song.ar || '未知歌手'),
+            pic: String(song.pic || ''),
             dt: Number(song.dt || 0),
             type: String(song.type || '未知舞种'),
             addedBy: String(username || '匿名舞友'),
@@ -644,12 +673,12 @@ app.post('/api/sync', async (req, res) => {
 app.get('/api/login/key', async (req, res) => res.json((await netease.login_qr_key({ realIP: '116.228.89.233' })).body));
 app.get('/api/login/create', async (req, res) => res.json((await netease.login_qr_create({ key: req.query.key, qrimg: true, realIP: '116.228.89.233' })).body));
 app.get('/api/login/check', async (req, res) => res.json((await netease.login_qr_check({ key: req.query.key, realIP: '116.228.89.233' })).body));
-app.get('/api/search', async (req, res) => {
-    try {
-        const result = await netease.cloudsearch({ keywords: req.query.keywords, limit: 15 });
-        res.json({ success: true, data: result.body.result.songs || [] });
-    } catch(e) { res.json({ success: false }); }
-});
+// app.get('/api/search', async (req, res) => {
+//     try {
+//         const result = await netease.cloudsearch({ keywords: req.query.keywords, limit: 15 });
+//         res.json({ success: true, data: result.body.result.songs || [] });
+//     } catch(e) { res.json({ success: false }); }
+// });
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`V2 PRO Fixed Running`));

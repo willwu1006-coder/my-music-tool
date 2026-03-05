@@ -90,13 +90,16 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 28px;
-            height: 28px;
+            width: 26px; 
+            height: 26px;
             background: #f0f0f0;
             border-radius: 50%;
             cursor: pointer;
-            font-size: 12px;
-            transition: 0.2s;
+            font-size: 10px; /* 适当减小图标，避免撑破圆圈 */
+            line-height: 1;  /* 极其重要：消除 Emoji 的多余行高 */
+            padding-left: 2px; /* Emoji 播放图标视觉偏左，微调 2px 实现视觉平衡 */
+            flex-shrink: 0;
+            user-select: none;
         }
         .play-btn:hover { background: #e0e0e0; }
         .song-row { 

@@ -893,13 +893,12 @@ async function startLogin() {
         
         list.innerHTML = stagedSongs.map((s, idx) => `
             <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee; font-size:12px;">
-                <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                    <!-- 歌名和歌手 -->
-                    ${s.name} - ${s.ar}
-                    
-                    <!-- 【重点：添加这一句】播放按钮 -->
-                    <span class="play-btn" onclick="playSong('${s.id}')" style="cursor:pointer; margin-left:8px; display:inline-block; font-style:normal;">▶️</span>
-                </span>
+                <div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:#333;">
+                    ${s.name} - <span style="color:#999;">${s.ar}</span>
+                </div>
+                
+                <!-- 2. 中间播放键：作为独立节点，不受文字溢出影响 -->
+                <div class="play-btn" onclick="playSong('${s.id}')">▶️</div>
                 
                 <select onchange="labelSong(${idx}, this.value)" style="width:80px; margin:0; padding:2px; font-size:11px;">
                     <option value="">标注...</option>

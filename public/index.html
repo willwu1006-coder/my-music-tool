@@ -23,6 +23,19 @@
             padding: 12px 0;
             border-bottom: 1px solid #eee;
         }
+        .play-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: #f0f0f0;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            transition: 0.2s;
+        }
+        .play-btn:hover { background: #e0e0e0; }
         .song-row { 
             display: grid; 
             grid-template-columns: 30px 65px 1fr 75px; /* 调整为4列：序号、舞种、信息区(歌名+歌手)、时长/操作 */
@@ -495,31 +508,27 @@ async function refreshRoomInfo() {
 
                 // --- 逻辑 C: 返回单行结构 ---
                 return `
-                    <div style="padding:12px 0; border-bottom:1px solid #eee; display:grid; grid-template-columns: 50px 1fr 70px; align-items: center; gap:12px;">
-                        <!-- 1. 最左侧：封面图 (固定宽度 50px 左右) -->
-                        <div style="width:45px; height:45px; position:relative; flex-shrink:0;">
-                            <img src="${s.pic || ''}?param=100y100" style="width:45px; height:45px; border-radius:6px; object-fit:cover; background:#f5f5f5;">
-                            <!-- 播放按钮叠在图片上 -->
-                            <div onclick="playSong('${s.id}')" class="play-btn" style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.25); color:#fff; cursor:pointer; border-radius:6px; font-size:14px;">▶️</div>
-                        </div>
+                    <div style="padding:12px 0; border-bottom:1px solid #eee; display:grid; grid-template-columns: 45px 1fr 35px 70px; align-items: center; gap:10px;">
+                        <!-- 1. 封面图 (纯图片，不再遮挡) -->
+                        <img src="${s.pic || ''}?param=100y100" style="width:45px; height:45px; border-radius:6px; object-fit:cover; background:#f5f5f5; flex-shrink:0;">
                 
-                        <!-- 2. 中间：信息区 (自适应宽度 1fr) -->
-                        <div style="overflow:hidden; display:flex; flex-direction:column; justify-content:center;">
+                        <!-- 2. 信息区 -->
+                        <div style="overflow:hidden; display:flex; flex-direction:column;">
                             <div style="display:flex; align-items:center; gap:5px; font-size:13px; font-weight:600;">
                                 <span style="color:var(--gold); white-space:nowrap;">[${s.type}]</span>
                                 <span style="color:#333; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.name}</span>
                                 ${deleteHtml}
                             </div>
-                            
-                            <div style="font-size:11px; color:#999; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                                ${s.ar} <span style="margin:0 3px; opacity:0.3;">·</span> @${s.addedBy || '匿名舞者'}
+                            <div style="font-size:11px; color:#999; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                ${s.ar} · @${s.addedBy || '匿名'}
                             </div>
-                            
-                            <!-- 点赞名单 -->
                             ${likeDetail}
                         </div>
                 
-                        <!-- 3. 右侧：固定操作区 (70px) -->
+                        <!-- 3. 播放按钮 (独立一列) -->
+                        <div class="play-btn" onclick="playSong('${s.id}')">▶️</div>
+                
+                        <!-- 4. 点赞区 -->
                         <div style="text-align:right;">
                             <button onclick="likeSong('${s.id}')" style="background:#fff; border:1px solid #ffd591; color:var(--gold); border-radius:4px; padding:5px 8px; cursor:pointer; font-size:12px; display:inline-flex; align-items:center; gap:3px;">
                                 👍 <span>${s.likes || 0}</span>
@@ -957,23 +966,29 @@ function renderAll(songs) {
     function renderListItems() {
     const listContainer = document.getElementById('sortable-list');
     listContainer.innerHTML = finalSongs.map((s, i) => `
-        <div class="song-row" data-id="${s.id}" style="cursor: grab; background: #fff;">
+        <div class="song-row" data-id="${s.id}" style="cursor: grab; background: #fff; grid-template-columns: 25px 45px 55px 1fr 35px 45px;">
             <!-- 1. 序号 -->
-            <span class="mono row-idx">${(i+1).toString().padStart(2,'0')}</span>
+            <span class="mono row-idx" style="font-size:11px; color:#ccc;">${(i+1).toString().padStart(2,'0')}</span>
             
-            <!-- 2. 舞种 -->
+            <!-- 2. 图片 -->
+            <img src="${s.pic}?param=100y100" style="width:35px; height:35px; border-radius:4px; object-fit:cover;">
+
+            <!-- 3. 舞种 -->
             <span style="color:var(--gold); font-weight:600; font-size:12px;">${s.type}</span>
             
-            <!-- 3. 合并后的信息区：歌名 + 歌手 -->
+            <!-- 4. 信息 -->
             <div class="song-info">
                 <span class="song-name">${s.name}</span>
                 <span class="song-ar">${s.ar}</span>
             </div>
             
-            <!-- 4. 时长与删除按钮 -->
+            <!-- 5. 播放 -->
+            <div class="play-btn" onclick="playSong('${s.id}')" style="width:24px; height:24px;">▶️</div>
+
+            <!-- 6. 操作 -->
             <div class="song-ops">
-                <span class="mono" style="font-size:11px;">${Math.floor(s.dt/60000)}:${Math.floor((s.dt%60000)/1000).toString().padStart(2,'0')}</span>
-                <button onclick="removeSong(${s.id})" style="background:none; border:none; color:#ff4d4f; cursor:pointer; font-size:16px; padding:0 5px;">×</button>
+                <span class="mono" style="font-size:10px; color:#ccc;">${Math.floor(s.dt/60000)}:${Math.floor((s.dt%60000)/1000).toString().padStart(2,'0')}</span>
+                <button onclick="removeSong('${s.id}')" style="background:none; border:none; color:#ff4d4f; cursor:pointer; font-size:16px;">×</button>
             </div>
         </div>
     `).join('');

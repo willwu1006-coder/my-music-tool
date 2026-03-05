@@ -583,7 +583,7 @@ async function refreshRoomInfo() {
                             <div style="display:flex; align-items:center; gap:5px; font-size:13px; font-weight:600;">
                                 <span style="color:var(--gold); white-space:nowrap;">[${s.type}]</span>
                                 <span style="color:#333; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.name}</span>
-                                ${deleteHtml}
+                                <span style="flex-shrink:0;">${deleteHtml}</span>
                             </div>
                             <div style="font-size:11px; color:#999; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                                 ${s.ar} · @${s.addedBy || '匿名'}

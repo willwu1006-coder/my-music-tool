@@ -578,10 +578,9 @@ async function refreshRoomInfo() {
         
                     <!-- 2. 信息区 (居中自适应) -->
                     <div style="min-width:0; display:flex; flex-direction:column;">
-                        <div style="font-size:13px; font-weight:600; line-height:1.4;">
-                            <span style="color:var(--gold); font-size:11px; white-space:nowrap; margin-right:4px;">[${s.type}]</span>
-                            <!-- 歌名支持两行显示 -->
-                            <span style="color:#333; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-all;">${s.name}</span>
+                        <div style="font-size:13px; font-weight:600; line-height:1.4; color:#333; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:break-all;">
+                            <span style="color:var(--gold); font-size:11px; margin-right:4px; flex-shrink:0; display:inline;">[${s.type}]</span>
+                            ${s.name}
                         </div>
                         <div style="font-size:11px; color:#999; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                             ${s.ar} · @${s.addedBy || '匿名'}

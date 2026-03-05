@@ -23,6 +23,26 @@
             padding: 12px 0;
             border-bottom: 1px solid #eee;
         }
+        .del-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            color: #bbb; /* 默认灰色，不抢眼 */
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .del-btn:hover {
+            background-color: #fff1f0; /* 淡淡的红色背景 */
+            color: #ff4d4f; /* 鲜艳的红色 */
+        }
+        .del-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor; /* 图标颜色随文字颜色变化 */
+        }
         .play-btn {
             display: inline-flex;
             align-items: center;
@@ -502,9 +522,12 @@ async function refreshRoomInfo() {
                 // 安全处理歌名（防止单引号导致 HTML 报错）
                 const safeName = s.name.replace(/'/g, "\\'");
                 
-                const deleteHtml = canDelete ? 
-                    `<span onclick="removeSongFromRoom('${s.id}', '${safeName}')" style="cursor:pointer; color:#ff4d4f; font-size:12px; margin-left:8px;" title="从房间移除">🗑️</span>` 
-                    : "";
+                const deleteHtml = canDelete ? `
+                    <div class="del-btn" onclick="removeSongFromRoom('${s.id}', '${safeName}')" title="移除歌曲">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                    </div>` : "";
 
                 // --- 逻辑 C: 返回单行结构 ---
                 return `

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dance Music Tool V3</title>
+    <title>Dance Music Tool</title>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
@@ -209,7 +209,7 @@
 
     <!-- 1. 账号模块 (默认隐藏) -->
     <div class="card" id="auth-section" style="display:none;">
-        <span class="section-label">Optional Account (Save your session)</span>
+        <span class="section-label">登陆并绑定网易云账号</span>
         <div style="display:flex; gap:10px;">
             <input type="text" id="u-name" placeholder="用户名">
             <input type="password" id="u-pass" placeholder="密码">
@@ -223,7 +223,7 @@
     <!-- 2. 网易云连接 (必须) -->
     <div class="card">
         <span class="section-label">1. 网易云连接</span>
-        <button class="btn btn-sub" id="l-btn" onclick="startLogin()">网易云扫码连接</button>
+        <button class="btn btn-sub" id="l-btn" onclick="startLogin()">网易云扫码连接（提示：手机端请先保存二维码，再打开网易云扫码）</button>
         <div id="qr-view" style="display:none; text-align:center; padding:10px;"><img id="qr-img" style="width:130px;"></div>
         
         <details style="margin-top:10px;">
@@ -246,7 +246,7 @@
             <button onclick="searchSong()" class="btn btn-main" style="width:80px; margin:0; background:#333;">搜索</button>
         </div>
         <div style="display:flex; gap:10px; margin-top:10px;">
-            <input type="text" id="import-url" placeholder="歌单链接或ID..." style="margin:0">
+            <input type="text" id="import-url" placeholder="歌单链接..." style="margin:0">
             <button onclick="importPlaylist()" class="btn btn-main" style="width:80px; margin:0; background:#333;">导入</button>
         </div>
          <div style="margin-top: 15px;">
@@ -295,7 +295,7 @@
                 </div>
             </div>
         </div>
-        <span class="section-label" style="font-size:10px; border:none; margin-bottom:10px;">协作清单 (点赞实时排序)</span>
+        <span class="section-label" style="font-size:10px; border:none; margin-bottom:10px;">协作歌单 (点赞实时排序)</span>
         <div id="room-songs-list" style="max-height:280px; overflow-y:auto; background:#fafafa; border-radius:4px; padding:10px; border: 1px solid #eee;">
             <div style="color:#ccc; text-align:center; font-size:12px;">加载中...</div>
         </div>
@@ -315,14 +315,14 @@
         <span class="section-label">3. 生成歌单</span>
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px; font-size:13px; color:#666;">
             <input type="checkbox" id="fill-toggle" checked style="width:auto; margin:0;">
-            <label for="fill-toggle">时长不足时，自动从默认库抽取补全</label>
+            <label for="fill-toggle">时长不足时，自动从默认曲库抽取补全</label>
         </div>
         <div style="display: flex; gap: 20px; margin-bottom: 20px; font-size: 13px;">
             <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
                 <input type="radio" name="gen-mode" value="sequential" checked style="width: auto; margin: 0;"> 严格循环模式
             </label>
             <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                <input type="radio" name="gen-mode" value="weighted" style="width: auto; margin: 0;"> 权重随机模式
+                <input type="radio" name="gen-mode" value="weighted" style="width: auto; margin: 0;"> 随机打乱模式
             </label>
         </div>
         <div id="weight-config-area" style="display: block; margin-bottom: 20px; padding: 15px; background: #fafafa; border-radius: 4px;">

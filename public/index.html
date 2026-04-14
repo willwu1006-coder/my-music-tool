@@ -1044,7 +1044,10 @@ function renderAll(songs) {
             <span class="mono row-idx" style="font-size:11px; color:#ccc;">${(i+1).toString().padStart(2,'0')}</span>
             
             <!-- 2. 图片 -->
-            <img src="${s.pic}?param=100y100" style="width:35px; height:35px; border-radius:4px; object-fit:cover;">
+            ${s.pic ? 
+                `<img src="${s.pic}?param=100y100" style="width:35px; height:35px; border-radius:4px; object-fit:cover; flex-shrink:0;">` : 
+                `<div style="width:35px; height:35px; border-radius:4px; background:#f0f0f0; display:flex; align-items:center; justify-content:center; color:#ccc; font-size:10px; flex-shrink:0;">底库</div>`
+            }
 
             <!-- 3. 舞种 -->
             <span style="color:var(--gold); font-weight:600; font-size:12px;">${s.type}</span>

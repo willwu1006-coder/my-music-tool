@@ -518,113 +518,66 @@ app.post('/api/calculate', async (req, res) => {
         let { duration, cookie, requestedSongs = [], useDefaultFill = true, mode = 'sequential', weights = {} , roomId } = req.body;
         if(!cookie) return res.json({ success: false, message: '未检测到网易云登录状态' });
         
-        let finalRequests = [...requestedSongs];
-        
-        // 重点：从数据库读取协作房间的歌曲
+        // 1. 合并协作房间点歌与本地点歌 (优先协作)
+        let finalRequests = [];
         if (roomId) {
-        const room = await Room.findOne({ roomId }).lean();
-        if (room && room.songs && Array.isArray(room.songs)) {
-            // 按照点赞数降序排列
-            const sortedRoomSongs = [...room.songs].sort((a, b) => (b.likes || 0) - (a.likes || 0));
-            finalRequests = [...finalRequests, ...sortedRoomSongs];
+            const room = await Room.findOne({ roomId }).lean();
+            if (room && room.songs) {
+                const sortedRoomSongs = [...room.songs].sort((a, b) => (b.likes || 0) - (a.likes || 0));
+                finalRequests = [...sortedRoomSongs];
+            }
         }
-    }
+        finalRequests = [...finalRequests, ...requestedSongs];
         
+        // 2. 准备集体舞
         let collectivePool = [];
         if (useDefaultFill) {
             const colRes = await netease.song_detail({ ids: COLLECTIVE_CONFIG.map(c => c.id).join(','), cookie, realIP: getIp(req) });
             collectivePool = (colRes.body.songs || []).map(s => {
                 const cfg = COLLECTIVE_CONFIG.find(c => c.id == s.id);
-                return { id: s.id, name: s.name, ar: formatArtists(s), dt: s.dt || s.duration, type: cfg.type };
+                return { id: s.id, name: s.name, ar: formatArtists(s), pic: getSongPic(s), dt: s.dt || s.duration, type: cfg.type };
             });
         }
 
+        // 3. 整理点歌池 (修正：动态创建 Key，支持自定义舞种)
         let requestPool = {};
-        DEFAULT_PLAYLISTS.forEach(p => requestPool[p.name] = []);
         finalRequests.forEach(s => { 
-            if (requestPool[s.type]) requestPool[s.type].push(s); 
+            if (!requestPool[s.type]) requestPool[s.type] = [];
+            requestPool[s.type].push(s); 
         });
 
+        // 4. 准备底库
         let baseData = [[],[],[],[],[],[],[]];
         if (useDefaultFill) {
-            const responses = await Promise.all(DEFAULT_PLAYLISTS.map(p => netease.playlist_track_all({ id: p.id, cookie })));
-            baseData = responses.map(r => shuffle([...(r.body.songs || [])]));
+            const responses = await Promise.all(DEFAULT_PLAYLISTS.map(p => 
+                netease.playlist_track_all({ id: p.id, cookie, realIP: getIp(req) })
+            ));
+            baseData = responses.map(r => (r.body && r.body.songs) ? shuffle([...r.body.songs]) : []);
         }
 
         const targetMs = duration * 60 * 1000;
         let result = [], currentMs = 0, usedIds = new Set();
-        
         let basePointers = {}; 
         DEFAULT_PLAYLISTS.forEach(p => basePointers[p.name] = 0);
         
         let roundCounter = 0; 
         let lastType = null;
-        let hasMore = true;
         let safetyIdx = 0;
-
-        while (currentMs < targetMs && hasMore && safetyIdx < 500) {
-            hasMore = false;
-            safetyIdx++;
-            if (mode === 'weighted') {
-                // --- 权重随机模式（带保护） ---
-                // 传入 lastType 进行避让
-                const typeName = pickTypeByWeight(weights, lastType); 
-                if (!typeName) break;
-
-                let song = findSong(typeName);
-                if (song) {
-                    addSong(song);
-                    lastType = typeName; // 更新最后一次舞种
-                    hasMore = true;
-
-                    // 集体舞逻辑（集体舞本身就起到了打断连续的作用）
-                    if (useDefaultFill && roundCounter >= 7 && collectivePool.length > 0 && currentMs < targetMs) {
-                        const col = collectivePool.shift();
-                        if (!usedIds.has(col.id)) { 
-                            addSong(col); 
-                            lastType = col.type; // 集体舞也作为 lastType
-                            roundCounter = 0; 
-                        }
-                    }
-                } else {
-                    weights[typeName] = 0; // 该舞种彻底没歌了
-                    hasMore = Object.values(weights).some(w => w > 0);
-                }
-            } else {
-                // --- 严格顺序模式 ---
-                // 原有的顺序模式自然保证了不会连续（0-1-2-3-4-5-6循环）
-                for (let i = 0; i < 7; i++) {
-                    const typeName = DEFAULT_PLAYLISTS[i].name;
-                    const prob = weights[typeName] ?? 1.0; // 获取该舞种的接受概率
-
-                    // 掷骰子：只有随机数小于设置值，才尝试放这首歌
-                    if (Math.random() < prob) {
-                        let song = findSong(typeName);
-                        if (song) {
-                            if(addSong(song)) {
-                                hasMore = true;
-                            }
-                        }
-                    } else {
-                        // 如果没中，我们认为这次循环里“跳过”了这个舞种，去看下一个
-                        // 但为了防止整轮都没中导致 hasMore 变为 false，只要有权重就不停
-                        if (prob > 0) hasMore = true; 
-                    }
-                    if (currentMs >= targetMs) break;
-                }
-                if (useDefaultFill && collectivePool.length > 0 && currentMs < targetMs) {
-                    const col = collectivePool.shift();
-                    if (!usedIds.has(col.id)) { addSong(col); hasMore = true; }
-                }
-            }
-        }
+      
+        // --- 内部辅助函数 ---
         function findSong(typeName) {
+            // 先找点歌池
             if (requestPool[typeName]?.length > 0) return requestPool[typeName].shift();
+            // 没点歌则找底库 (底库只有7种默认舞)
             if (useDefaultFill) {
                 const bIdx = DEFAULT_PLAYLISTS.findIndex(p => p.name === typeName);
-                if (bIdx !== -1 && baseData[bIdx][basePointers[typeName]]) {
+                if (bIdx !== -1 && baseData[bIdx] && baseData[bIdx][basePointers[typeName]]) {
                     const raw = baseData[bIdx][basePointers[typeName]++];
-                    return { id: raw.id, name: raw.name, ar: formatArtists(raw), dt: raw.dt || raw.duration, type: typeName };
+                    return { 
+                        id: raw.id, name: raw.name, ar: formatArtists(raw), 
+                        // pic: getSongPic(raw),
+                        dt: raw.dt || raw.duration, type: typeName 
+                    };
                 }
             }
             return null;
@@ -635,10 +588,59 @@ app.post('/api/calculate', async (req, res) => {
                 result.push(song);
                 usedIds.add(song.id);
                 currentMs += song.dt;
-                // 只有正规舞计入 roundCounter
                 if (!song.type.includes('集体')) roundCounter++;
+                return true;
+            }
+            return false;
+        }
+
+        while (currentMs < targetMs && safetyIdx < 600) {
+            safetyIdx++;
+            let songAddedThisRound = false;
+
+            // 【核心修正 A】：优先处理所有不在 7 大类中的自定义舞种点歌
+            for (let type in requestPool) {
+                const isDefaultType = DEFAULT_PLAYLISTS.some(p => p.name === type);
+                if (!isDefaultType && requestPool[type].length > 0) {
+                    if (addSong(requestPool[type].shift())) songAddedThisRound = true;
+                }
+            }
+
+            // 【核心修正 B】：执行正常的舞种循环
+            if (mode === 'weighted') {
+                const typeName = pickTypeByWeight(weights, lastType); 
+                if (typeName) {
+                    let song = findSong(typeName);
+                    if (song) { if(addSong(song)) { lastType = typeName; songAddedThisRound = true; } }
+                    else { weights[typeName] = 0; } // 该舞种彻底枯竭
+                }
+            } else {
+                for (let i = 0; i < 7; i++) {
+                    const typeName = DEFAULT_PLAYLISTS[i].name;
+                    const prob = weights[typeName] ?? 1.0;
+                    if (Math.random() < prob) {
+                        let song = findSong(typeName);
+                        if (song) { if(addSong(song)) songAddedThisRound = true; }
+                    }
+                }
+            }
+
+            // 集体舞插入
+            if (useDefaultFill && roundCounter >= 7 && collectivePool.length > 0) {
+                if (addSong(collectivePool.shift())) {
+                    roundCounter = 0;
+                    songAddedThisRound = true;
+                }
+            }
+
+            // 终止条件判断：如果这一整轮没有任何一首歌能加进去，说明所有池子都干了
+            if (!songAddedThisRound) {
+                const hasAnyRequest = Object.values(requestPool).some(arr => arr.length > 0);
+                const hasAnyBase = useDefaultFill && DEFAULT_PLAYLISTS.some(p => baseData[DEFAULT_PLAYLISTS.indexOf(p)][basePointers[p.name]]);
+                if (!hasAnyRequest && !hasAnyBase) break;
             }
         }
+
         res.json({ success: true, songs: result });
     } catch (e) {
         res.json({ success: false, message: e.message });

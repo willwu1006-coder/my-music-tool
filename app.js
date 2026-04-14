@@ -649,15 +649,17 @@ app.post('/api/calculate', async (req, res) => {
 
 app.post('/api/sync', async (req, res) => {
     try {
-        const { songs, cookie } = req.body;
-        if (!songs || songs.length === 0) throw new Error('歌曲列表为空');
+        const { songs, cookie, roomName } = req.body; 
+        if (!songs || !cookie) throw new Error('同步失败：缺少必要信息');
 
         // 正序取 ID，然后 reverse，保持你原来的逻辑
         const trackIds = songs.map(s => s.id).reverse().join(',');
         
         const now = new Date();
         const dateStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`;
-        const playlistName = `舞会_${dateStr}`; 
+        let playlistName = (roomName && roomName !== '未命名共享歌单') 
+                           ? roomName 
+                           : `舞会_${dateStr}`;
         
         const createRes = await netease.playlist_create({ 
             name: playlistName, 

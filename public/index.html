@@ -359,10 +359,27 @@
     </div>
 </div> <!-- .container 结束 -->
 
-<div id="poster-wrap" style="position:absolute; left:-9999px; width:600px; background:#fff; padding:60px;">
-    <h1 id="p-main-title" style="text-align:center; font-family:'Playfair Display'; font-size:45px; color:var(--accent); margin:0;">Setlist</h1>
-    <p id="p-date" style="text-align:center; color:var(--gold); letter-spacing:4px; font-size:12px; margin-bottom:40px;"></p>
+<!-- 海报容器 (隐藏) -->
+<div id="poster-wrap" style="position:absolute; left:-9999px; width:600px; background:#fff; padding:60px; box-sizing: border-box;">
+    <!-- 1. 动态歌单标题 -->
+    <h1 id="p-main-title" style="text-align:center; font-family:'Playfair Display'; font-size:45px; color:var(--accent); margin:0; letter-spacing: -1px;">Setlist</h1>
+    
+    <!-- 2. 分割线 (装饰用) -->
+    <div style="width:60px; height:3px; background:var(--gold); margin: 25px auto 40px auto;"></div>
+
+    <!-- 3. 歌曲列表容器 -->
     <div id="p-container"></div>
+
+    <!-- 4. 海报底部：显示总时长 -->
+    <div style="margin-top: 50px; border-top: 2px solid var(--accent); padding-top: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+            <div style="font-size: 10px; color: #BBB; letter-spacing: 2px; font-weight: 700; margin-bottom: 5px;">TOTAL SESSION DURATION</div>
+            <div id="p-total-duration" style="font-size: 28px; font-family: 'JetBrains Mono'; color: var(--accent); font-weight: bold;">00:00:00</div>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-size: 10px; color: #FFF; background: var(--accent); padding: 6px 15px; letter-spacing: 1px; font-weight: 600;">DANCE MUSIC TOOL</div>
+        </div>
+    </div>
 </div>
 
 
@@ -1150,31 +1167,61 @@ function renderAll(songs) {
     // }
 function renderPosterContent() {
     const p = document.getElementById('p-container');
-    const posterTitle = document.getElementById('p-main-title'); // 假设我们在下面给它加个 ID
-    
-    // 获取当前房间名
+    const posterTitle = document.getElementById('p-main-title');
+    const totalDisplay = document.getElementById('p-total-duration');
+
+    // 1. 更新标题
     const rawTitle = document.getElementById('display-room-title').innerText;
     const roomName = rawTitle.replace(/[☆★]/g, '').trim();
-
-    // 更新海报大标题
-    if(posterTitle) posterTitle.innerText = roomName;
+    posterTitle.innerText = roomName;
 
     p.innerHTML = ''; 
+    let totalMs = 0;
+
     finalSongs.forEach((s, i) => {
+        totalMs += s.dt; // 累加时长
         const timeStr = Math.floor(s.dt/60000) + ":" + Math.floor((s.dt%60000)/1000).toString().padStart(2,'0');
+        
+        // 海报每一行的 HTML
         p.innerHTML += `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid #F9F7F0;">
-                <span style="width:35px; font-family:'JetBrains Mono'; font-size:13px; color:#bbb;">${(i+1).toString().padStart(2,'0')}</span>
-                <span style="width:70px; color:var(--gold); font-weight:bold; font-size:13px;">${s.type}</span>
-                <div style="flex:1; margin: 0 10px; overflow:hidden;">
-                    <div style="font-weight:600; font-size:15px; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
-                    <div style="font-size:11px; color:#999; margin-top:2px;">${s.ar}</div>
+            <div style="display:flex; align-items:center; padding:15px 0; border-bottom:1px solid #F9F7F0; gap:15px;">
+                <!-- 序号 -->
+                <span style="width:30px; font-family:'JetBrains Mono'; font-size:12px; color:#ccc; flex-shrink:0;">${(i+1).toString().padStart(2,'0')}</span>
+
+                <!-- 歌曲封面图 -->
+                <div style="width:45px; height:45px; flex-shrink:0;">
+                    ${s.pic ? 
+                        `<img src="${s.pic}?param=100y100" style="width:45px; height:45px; border-radius:4px; object-fit:cover; display:block;">` : 
+                        `<div style="width:45px; height:45px; border-radius:4px; background:#f9f9f9; border:1px solid #eee; display:flex; align-items:center; justify-content:center; color:#ddd; font-size:9px;">底库</div>`
+                    }
                 </div>
-                <span style="width:45px; text-align:right; font-family:'JetBrains Mono'; font-size:12px; color:#bbb;">${timeStr}</span>
+
+                <!-- 歌曲信息 -->
+                <div style="flex:1; overflow:hidden;">
+                    <div style="font-size:15px; font-weight:600; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        <span style="color:var(--gold); font-size:11px; margin-right:6px;">[${s.type}]</span>
+                        ${s.name}
+                    </div>
+                    <div style="font-size:11px; color:#999; margin-top:3px;">${s.ar}</div>
+                </div>
+
+                <!-- 时长 -->
+                <span style="width:45px; text-align:right; font-family:'JetBrains Mono'; font-size:13px; color:#bbb; flex-shrink:0;">${timeStr}</span>
             </div>`;
     });
 
-    document.getElementById('p-date').innerText = "CURATED SESSION - " + new Date().toLocaleDateString();
+    // 2. 计算并显示总时长 (时:分:秒)
+    const totalSeconds = Math.floor(totalMs / 1000);
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    
+    // 如果超过1小时，显示 时:分:秒，否则只显示 分:秒
+    const formattedTotal = hrs > 0 
+        ? `${hrs}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`
+        : `${mins}:${secs.toString().padStart(2,'0')}`;
+
+    if(totalDisplay) totalDisplay.innerText = formattedTotal;
 }
 
     async function downloadPoster() {

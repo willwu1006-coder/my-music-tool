@@ -360,7 +360,7 @@
 </div> <!-- .container 结束 -->
 
 <div id="poster-wrap" style="position:absolute; left:-9999px; width:600px; background:#fff; padding:60px;">
-    <h1 style="text-align:center; font-family:'Playfair Display'; font-size:45px; color:var(--accent); margin:0;">Setlist</h1>
+    <h1 id="p-main-title" style="text-align:center; font-family:'Playfair Display'; font-size:45px; color:var(--accent); margin:0;">Setlist</h1>
     <p id="p-date" style="text-align:center; color:var(--gold); letter-spacing:4px; font-size:12px; margin-bottom:40px;"></p>
     <div id="p-container"></div>
 </div>
@@ -1085,26 +1085,31 @@ function renderAll(songs) {
     }
     async function finalSync() {
     const btn = document.getElementById('sync-btn');
+    // 获取当前页面上显示的歌单名 (包含星星按钮之前的文字部分)
+    const rawTitle = document.getElementById('display-room-title').innerText;
+    // 过滤掉可能的星星图标等杂质
+    const roomName = rawTitle.replace(/[☆★]/g, '').trim();
     btn.disabled = true;
     btn.innerText = '正在同步至网易云...';
 
     try {
-        const res = await fetch('/api/sync', {
+       const res = await fetch('/api/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                songs: finalSongs, // 发送前端调整后的最终数组
-                cookie: userCookie 
+                songs: finalSongs, 
+                cookie: userCookie,
+                roomName: roomName // 【重点】传给后端
             })
         });
         const data = await res.json();
         if(data.success) {
-            alert('歌单同步成功！');
-            // 同步成功后，再生成海报数据
-            renderPosterContent();
-            btn.innerText = '同步成功！已更新海报数据';
+            alert('已成功同步到网易云！');
+            renderPosterContent(); // 更新海报层
+            btn.innerText = '同步成功 (可再次同步)';
+            btn.disabled = false;
         } else {
-            alert('失败：' + data.message);
+            alert('同步失败：' + data.message);
             btn.disabled = false;
         }
     } catch(e) {
@@ -1114,35 +1119,63 @@ function renderAll(songs) {
 }
 
     // 专门给海报渲染的函数
-    function renderPosterContent() {
-        const p = document.getElementById('p-container');
-        p.innerHTML = ''; // 清空旧内容
+    // function renderPosterContent() {
+    //     const p = document.getElementById('p-container');
+    //     p.innerHTML = ''; // 清空旧内容
         
-        if (!finalSongs || finalSongs.length === 0) {
-            p.innerHTML = '<div style="text-align:center; padding:50px; color:#ccc;">暂无歌曲数据</div>';
-            return;
-        }
+    //     if (!finalSongs || finalSongs.length === 0) {
+    //         p.innerHTML = '<div style="text-align:center; padding:50px; color:#ccc;">暂无歌曲数据</div>';
+    //         return;
+    //     }
     
-        finalSongs.forEach((s, i) => {
-            const timeStr = Math.floor(s.dt/60000) + ":" + Math.floor((s.dt%60000)/1000).toString().padStart(2,'0');
+    //     finalSongs.forEach((s, i) => {
+    //         const timeStr = Math.floor(s.dt/60000) + ":" + Math.floor((s.dt%60000)/1000).toString().padStart(2,'0');
             
-            // 采用和预览列表类似的上下结构，确保美观且对齐
-            p.innerHTML += `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid #F9F7F0;">
-                    <span style="width:40px; font-family:'JetBrains Mono'; font-size:14px; color:#bbb;">${(i+1).toString().padStart(2,'0')}</span>
-                    <span style="width:70px; color:var(--gold); font-weight:bold; font-size:14px;">${s.type}</span>
-                    <div style="flex:1; margin: 0 15px; overflow:hidden;">
-                        <div style="font-weight:600; font-size:16px; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
-                        <div style="font-size:12px; color:#999; margin-top:2px;">${s.ar}</div>
-                    </div>
-                    <span style="width:50px; text-align:right; font-family:'JetBrains Mono'; font-size:13px; color:#bbb;">${timeStr}</span>
-                </div>`;
-        });
+    //         // 采用和预览列表类似的上下结构，确保美观且对齐
+    //         p.innerHTML += `
+    //             <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid #F9F7F0;">
+    //                 <span style="width:40px; font-family:'JetBrains Mono'; font-size:14px; color:#bbb;">${(i+1).toString().padStart(2,'0')}</span>
+    //                 <span style="width:70px; color:var(--gold); font-weight:bold; font-size:14px;">${s.type}</span>
+    //                 <div style="flex:1; margin: 0 15px; overflow:hidden;">
+    //                     <div style="font-weight:600; font-size:16px; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
+    //                     <div style="font-size:12px; color:#999; margin-top:2px;">${s.ar}</div>
+    //                 </div>
+    //                 <span style="width:50px; text-align:right; font-family:'JetBrains Mono'; font-size:13px; color:#bbb;">${timeStr}</span>
+    //             </div>`;
+    //     });
     
-        // 更新日期和总计（可选）
-        const title = document.getElementById('display-room-title').innerText;
-        document.getElementById('p-date').innerText = title + " - " + new Date().toLocaleDateString();
-    }
+    //     // 更新日期和总计（可选）
+    //     const title = document.getElementById('display-room-title').innerText;
+    //     document.getElementById('p-date').innerText = title + " - " + new Date().toLocaleDateString();
+    // }
+function renderPosterContent() {
+    const p = document.getElementById('p-container');
+    const posterTitle = document.getElementById('p-main-title'); // 假设我们在下面给它加个 ID
+    
+    // 获取当前房间名
+    const rawTitle = document.getElementById('display-room-title').innerText;
+    const roomName = rawTitle.replace(/[☆★]/g, '').trim();
+
+    // 更新海报大标题
+    if(posterTitle) posterTitle.innerText = roomName;
+
+    p.innerHTML = ''; 
+    finalSongs.forEach((s, i) => {
+        const timeStr = Math.floor(s.dt/60000) + ":" + Math.floor((s.dt%60000)/1000).toString().padStart(2,'0');
+        p.innerHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid #F9F7F0;">
+                <span style="width:35px; font-family:'JetBrains Mono'; font-size:13px; color:#bbb;">${(i+1).toString().padStart(2,'0')}</span>
+                <span style="width:70px; color:var(--gold); font-weight:bold; font-size:13px;">${s.type}</span>
+                <div style="flex:1; margin: 0 10px; overflow:hidden;">
+                    <div style="font-weight:600; font-size:15px; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
+                    <div style="font-size:11px; color:#999; margin-top:2px;">${s.ar}</div>
+                </div>
+                <span style="width:45px; text-align:right; font-family:'JetBrains Mono'; font-size:12px; color:#bbb;">${timeStr}</span>
+            </div>`;
+    });
+
+    document.getElementById('p-date').innerText = "CURATED SESSION - " + new Date().toLocaleDateString();
+}
 
     async function downloadPoster() {
         const btn = event.target;

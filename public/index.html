@@ -317,6 +317,10 @@
             <input type="checkbox" id="fill-toggle" checked style="width:auto; margin:0;">
             <label for="fill-toggle">时长不足时，自动从默认曲库抽取补全</label>
         </div>
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px; font-size:13px; color:#666;">
+            <input type="checkbox" id="collective-toggle" style="width:auto; margin:0;">
+            <label for="collective-toggle">插入集体舞</label>
+        </div>
         <div style="display: flex; gap: 20px; margin-bottom: 20px; font-size: 13px;">
             <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
                 <input type="radio" name="gen-mode" value="sequential" checked style="width: auto; margin: 0;"> 严格循环模式
@@ -984,6 +988,7 @@ async function startLogin() {
         const dur = document.getElementById('duration').value;
         const fill = document.getElementById('fill-toggle').checked;
         const mode = document.querySelector('input[name="gen-mode"]:checked').value;
+        const useCollective = document.getElementById('collective-toggle').checked;
         
         const weights = {};
         document.querySelectorAll('#weight-inputs input').forEach(el => {
@@ -1006,6 +1011,7 @@ async function startLogin() {
                     cookie: userCookie, 
                     requestedSongs: reqSongs, 
                     useDefaultFill: fill,
+                    useCollective: useCollective,
                     mode: mode, 
                     weights: weights,
                     roomId: activeRoomId 

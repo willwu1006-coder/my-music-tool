@@ -1074,26 +1074,29 @@ function renderListItems() {
                         <img src="${s.pic || ''}?param=100y100" ${labelTip} style="width:35px; height:35px; object-fit:cover; display:block; ${imgStyle}">
                     </div>
 
-            <!-- 3. 舞种 -->
-            <span style="color:var(--gold); font-weight:600; font-size:12px;">${s.type}</span>
-            
-            <!-- 4. 信息 -->
-            <div class="song-info">
-                <span class="song-name">${s.name}</span>
-                <span class="song-ar">${s.ar}</span>
-            </div>
-            
-            <!-- 5. 播放 -->
-            <div class="play-btn" onclick="playSong('${s.id}')" style="width:24px; height:24px;">▶️</div>
+                    <!-- 3. 舞种 -->
+                    <span style="color:var(--gold); font-weight:600; font-size:12px;">${s.type}</span>
+                    
+                    <!-- 4. 信息 -->
+                    <div class="song-info">
+                        <span class="song-name" style="font-size:12px;">${s.name}</span>
+                        <div class="song-ar-sub" style="font-size:10px;">${s.ar}</div>
+                    </div>
+                    
+                    <!-- 5. 播放 -->
+                    <div class="play-btn" onclick="playSong('${s.id}')" style="width:24px; height:24px; font-size:10px;">▶️</div>
 
-            <!-- 6. 操作 -->
-            <div class="song-ops">
-                <span class="mono" style="font-size:10px; color:#ccc;">${Math.floor(s.dt/60000)}:${Math.floor((s.dt%60000)/1000).toString().padStart(2,'0')}</span>
-                <button onclick="removeSong('${s.id}')" style="background:none; border:none; color:#ff4d4f; cursor:pointer; font-size:16px;">×</button>
-            </div>
-        </div>
-    `).join('');
-}
+                    <!-- 6. 操作 -->
+                    <div class="song-ops" style="display:flex; flex-direction:column; align-items:center;">
+                        <span class="mono" style="font-size:9px; color:#ccc;">${Math.floor(s.dt/60000)}:${Math.floor((s.dt%60000)/1000).toString().padStart(2,'0')}</span>
+                        <div class="del-btn" onclick="removeSong('${s.id}')" style="width:20px; height:20px;">
+                            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
     
     // 删除歌曲
     function removeSong(id) {

@@ -281,32 +281,36 @@ app.get('/api/room/info', async (req, res) => {
     try {
         const { roomId, username } = req.query;
         const room = await Room.findOne({ roomId }).lean();
-        if (!room) return res.json({ success: false });
+        if (!room) return res.json({ success: false, message: '房间不存在' });
 
-        // 1. 提取所有参与者用户名（过滤掉匿名用户）
-        const usernames = [...new Set(room.songs.map(s => s.addedBy).filter(name => !name.startsWith('Guest:')))];
+        // --- 重点修复：增加容错处理 ---
+        const songs = room.songs || []; // 确保 songs 是数组
         
-        // 2. 批量查询这些用户的资料
+        // 1. 提取参与者（增加 s.addedBy 存在性判断）
+        const usernames = [...new Set(songs.map(s => s.addedBy).filter(name => name && !name.startsWith('Guest:')))];
+        
         const usersData = await User.find({ username: { $in: usernames } }).lean();
         
-        // 3. 构建参与者等级映射表
         const participants = usersData.map(u => ({
             username: u.username,
-            level: getLevelInfo(u).name,
-            sessions: u.participatedRooms.length
+            level: getLevelInfo(u).name, // 确保这里调用的是 getLevelInfo
+            sessions: u.participatedRooms ? u.participatedRooms.length : 0
         }));
 
-        // 4. 判断当前查询者的收藏状态
+        // 2. 排序逻辑增加安全保护
+        songs.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+        
         let isFavorited = false;
         if (username) {
             const user = await User.findOne({ username });
             isFavorited = user?.favorites?.includes(roomId) || false;
         }
 
-        room.songs.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-        
         res.json({ success: true, data: room, isFavorited, participants });
-    } catch (e) { res.json({ success: false }); }
+    } catch (e) { 
+        console.error("获取房间详情失败:", e);
+        res.json({ success: false, message: "歌单加载失败，可能存在旧数据冲突" }); 
+    }
 });
 
 

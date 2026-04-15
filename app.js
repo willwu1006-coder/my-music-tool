@@ -21,26 +21,25 @@ mongoose.connect(MONGO_URL)
 
 
 // 1. 等级配置升级版
-const LEVEL_CONFIG = {
-    GUEST: { name: "匿名舞友", limit: 1 },         
-    JUNIOR: { minSessions: 0, name: "初级舞友", limit: 3 },  
-    SENIOR: { minSessions: 3, name: "资深舞友", limit: 6 },  
-    MASTER: { minSessions: 10, name: "舞林高手", limit: 10 }, 
-    SUPREME: { minSessions: 20, name: "舞林至尊", limit: 15 }, 
-    LEGEND: { minSessions: 30, name: "舞林盟主", limit: 99 }   
+const LEVEL_CONFIG = [
+    { min: 35, name: "舞林神话", limit: 99, color: "#ff4d4f" },
+    { min: 25, name: "舞林盟主", limit: 20, color: "#f5222d" },
+    { min: 18, name: "舞林至尊", limit: 15, color: "#722ed1" },
+    { min: 12, name: "舞林高手", limit: 12, color: "#1890ff" },
+    { min: 8,  name: "华彩舞匠", limit: 10, color: "#13c2c2" },
+    { min: 5,  name: "节奏诗人", limit: 8,  color: "#52c41a" },
+    { min: 3,  name: "步履初盈", limit: 6,  color: "#faad14" },
+    { min: 1,  name: "初级舞友", limit: 5,  color: "#fa8c16" },
+    { min: 0,  name: "萌新舞友", limit: 3,  color: "#999" }
+];
+
+const getLevelInfo = (user) => {
+    if (!user) return { name: "匿名舞友", limit: 1, color: "#ccc" }; // 匿名用户的雅称
+    const sessions = user.participatedRooms ? user.participatedRooms.length : 0;
+    // 按照从高到低匹配
+    return LEVEL_CONFIG.find(lvl => sessions >= lvl.min) || LEVEL_CONFIG[LEVEL_CONFIG.length - 1];
 };
 
-// 获取等级函数
-const getLevelInfo = (user) => {
-    if (!user) return LEVEL_CONFIG.GUEST;
-    const sessions = user.participatedRooms ? user.participatedRooms.length : 0;
-    
-    if (sessions >= 30) return LEVEL_CONFIG.LEGEND;
-    if (sessions >= 20) return LEVEL_CONFIG.SUPREME; // 匹配新增等级
-    if (sessions >= 10) return LEVEL_CONFIG.MASTER;
-    if (sessions >= 3) return LEVEL_CONFIG.SENIOR;
-    return LEVEL_CONFIG.JUNIOR;
-};
 
 // 修改 User Schema
 const User = mongoose.model('User', new mongoose.Schema({
@@ -280,29 +279,34 @@ app.post('/api/room/create', async (req, res) => {
 // 获取房间信息 (返回时按点赞数排序)
 app.get('/api/room/info', async (req, res) => {
     try {
-        const { roomId } = req.query;
-        // 使用 .lean() 可以让返回的对象更容易操作
+        const { roomId, username } = req.query;
         const room = await Room.findOne({ roomId }).lean();
+        if (!room) return res.json({ success: false });
 
-        // 1. 检查房间是否存在
-        if (!room) {
-            return res.json({ success: false, message: '房间不存在' });
+        // 1. 提取所有参与者用户名（过滤掉匿名用户）
+        const usernames = [...new Set(room.songs.map(s => s.addedBy).filter(name => !name.startsWith('Guest:')))];
+        
+        // 2. 批量查询这些用户的资料
+        const usersData = await User.find({ username: { $in: usernames } }).lean();
+        
+        // 3. 构建参与者等级映射表
+        const participants = usersData.map(u => ({
+            username: u.username,
+            level: getLevelInfo(u).name,
+            sessions: u.participatedRooms.length
+        }));
+
+        // 4. 判断当前查询者的收藏状态
+        let isFavorited = false;
+        if (username) {
+            const user = await User.findOne({ username });
+            isFavorited = user?.favorites?.includes(roomId) || false;
         }
 
-        // 2. 检查 songs 是否存在且是数组 (重点修复)
-        let songs = room.songs || [];
+        room.songs.sort((a, b) => (b.likes || 0) - (a.likes || 0));
         
-        // 3. 执行排序 (增加 likes 的默认值保护)
-        songs.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-        
-        // 4. 将排序后的歌重新放回对象
-        room.songs = songs;
-
-        res.json({ success: true, data: room });
-    } catch (e) {
-        console.error('获取房间信息失败:', e);
-        res.json({ success: false, message: '服务器内部错误' });
-    }
+        res.json({ success: true, data: room, isFavorited, participants });
+    } catch (e) { res.json({ success: false }); }
 });
 
 

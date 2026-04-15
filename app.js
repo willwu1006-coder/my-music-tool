@@ -29,7 +29,7 @@ const LEVEL_CONFIG = [
     { min: 8,  name: "华彩舞匠", limit: 10, color: "#13c2c2" },
     { min: 5,  name: "节奏诗人", limit: 8,  color: "#52c41a" },
     { min: 3,  name: "步履初盈", limit: 6,  color: "#faad14" },
-    { min: 1,  name: "初级舞友", limit: 5,  color: "#fa8c16" },
+    { min: 2,  name: "初级舞友", limit: 5,  color: "#fa8c16" },
     { min: 0,  name: "萌新舞友", limit: 3,  color: "#999" }
 ];
 

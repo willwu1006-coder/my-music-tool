@@ -19,14 +19,37 @@ mongoose.connect(MONGO_URL)
   .then(() => console.log('✅ MongoDB 已连接'))
   .catch(err => console.error('❌ 数据库连接失败:', err));
 
-// --- 定义模型 (替代原来的 users.json 和 rooms.json) ---
 
-// 用户模型
+// 1. 等级配置升级版
+const LEVEL_CONFIG = {
+    GUEST: { name: "匿名舞友", limit: 1 },         
+    JUNIOR: { minSessions: 0, name: "初级舞友", limit: 3 },  
+    SENIOR: { minSessions: 3, name: "资深舞友", limit: 6 },  
+    MASTER: { minSessions: 10, name: "舞林高手", limit: 10 }, 
+    SUPREME: { minSessions: 20, name: "舞林至尊", limit: 15 }, 
+    LEGEND: { minSessions: 30, name: "舞林盟主", limit: 99 }   
+};
+
+// 获取等级函数
+const getLevelInfo = (user) => {
+    if (!user) return LEVEL_CONFIG.GUEST;
+    const sessions = user.participatedRooms ? user.participatedRooms.length : 0;
+    
+    if (sessions >= 30) return LEVEL_CONFIG.LEGEND;
+    if (sessions >= 20) return LEVEL_CONFIG.SUPREME; // 匹配新增等级
+    if (sessions >= 10) return LEVEL_CONFIG.MASTER;
+    if (sessions >= 3) return LEVEL_CONFIG.SENIOR;
+    return LEVEL_CONFIG.JUNIOR;
+};
+
+// 修改 User Schema
 const User = mongoose.model('User', new mongoose.Schema({
     username: { type: String, unique: true, required: true },
     password: { type: String, required: true },
     neteaseCookie: String,
-    favorites: { type: [String], default: [] }
+    favorites: { type: [String], default: [] },
+    // 重点：记录该用户在哪些房间里成功加过歌（存房间ID，确保不重复计算场次）
+    participatedRooms: { type: [String], default: [] } 
 }));
 
 // 协作房间模型 - 修改为最通用的 Array 类型
@@ -358,54 +381,74 @@ app.post('/api/room/like', async (req, res) => {
 app.post('/api/room/add', async (req, res) => {
     try {
         let { roomId, username, song } = req.body;
+        const userIp = getIp(req); // 获取游客 IP
 
-        // 1. 如果 song 莫名其妙变成了字符串，强行解析它
-        if (typeof song === 'string') {
-            try {
-                // 处理可能存在的奇怪转义字符
-                const cleanJson = song.replace(/\n/g, '').replace(/\+/g, '');
-                song = JSON.parse(cleanJson);
-            } catch (e) {
-                console.error('JSON解析失败:', song);
+        const room = await Room.findOne({ roomId });
+        if (!room) return res.json({ success: false, message: '房间不存在' });
+
+        // --- 核心：多权限判定逻辑 ---
+        const isOwner = (username && room.owner === username);
+        
+        if (!isOwner) {
+            let levelInfo;
+            let currentAddedCount;
+
+            if (username) {
+                // 情况 A：已登录用户
+                const user = await User.findOne({ username });
+                levelInfo = getLevelInfo(user);
+                // 统计该房间里由该用户名添加的歌
+                currentAddedCount = room.songs.filter(s => s.addedBy === username).length;
+            } else {
+                // 情况 B：匿名游客
+                levelInfo = LEVEL_CONFIG.GUEST;
+                // 重点：通过 IP 统计该游客在本房间已加的歌
+                // 假设我们在加歌时，匿名用户存入的是 'IP:' + userIp
+                currentAddedCount = room.songs.filter(s => s.addedBy === 'Guest:' + userIp).length;
+            }
+
+            if (currentAddedCount >= levelInfo.limit) {
+                const tip = username 
+                    ? `您的等级[${levelInfo.name}]本场限点${levelInfo.limit}首。多参加舞会可升级！`
+                    : `匿名游客每场限点${levelInfo.limit}首，登录账号可点更多并累计等级。`;
+                return res.json({ success: false, message: tip });
             }
         }
 
-        // 2. 手动提取字段，构建一个纯净的对象存入（这是解决 CastError 的终极方案）
+        // --- 查重逻辑 ---
+        const songIdStr = String(song.id || '');
+        if (room.songs.some(s => String(s.id) === songIdStr)) {
+            return res.json({ success: false, message: '此歌已在清单中' });
+        }
+
+        // --- 准备存入的数据 ---
+        const addedByValue = username ? username : 'Guest:' + userIp;
+
         const songObject = {
-            id: String(song.id || ''),
-            name: String(song.name || '未知歌名'),
-            ar: String(song.ar || '未知歌手'),
-            pic: String(song.pic || ''),
-            dt: Number(song.dt || 0),
-            type: String(song.type || '未知舞种'),
-            addedBy: String(username || '匿名舞友'),
+            id: songIdStr, 
+            name: String(song.name), 
+            ar: String(song.ar),
+            pic: String(song.pic || ''), 
+            dt: Number(song.dt), 
+            type: String(song.type),
+            addedBy: addedByValue, // 存入用户名或标记后的 IP
             likes: 0,
             likedBy: []
         };
-        const room = await Room.findOne({ roomId: roomId });
-        if (!room) return res.json({ success: false, message: '找不到该房间' });
 
-        // 检查 songs 数组中是否已经存在该 ID
-        const songIdStr = String(song.id || ''); 
-        const isDuplicate = room.songs && room.songs.some(s => String(s.id) === songIdStr);
-        if (isDuplicate) {
-            return res.json({ success: false, message: '这首歌已经在协作清单里啦，不用重复添加' });
+        await Room.updateOne({ roomId }, { $push: { songs: songObject } });
+        
+        // 如果是登录用户，更新其参与场次
+        if (username) {
+            await User.updateOne(
+                { username, participatedRooms: { $ne: roomId } },
+                { $push: { participatedRooms: roomId } }
+            );
         }
 
-        // 3. 执行更新
-        const result = await Room.updateOne(
-            { roomId: roomId },
-            { $push: { songs: songObject } }
-        );
-
-        if (result.matchedCount > 0) {
-            res.json({ success: true });
-        } else {
-            res.json({ success: false, message: '找不到该房间' });
-        }
+        res.json({ success: true });
     } catch (e) {
-        console.error('添加失败详细日志:', e);
-        res.json({ success: false, message: '添加失败: ' + e.message });
+        res.json({ success: false, message: e.message });
     }
 });
 

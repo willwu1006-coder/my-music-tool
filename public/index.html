@@ -377,8 +377,8 @@
     <!-- 4. 海报底部：显示总时长 -->
     <div style="margin-top: 50px; border-top: 2px solid var(--accent); padding-top: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
         <div>
-            <div style="font-size: 10px; color: #BBB; letter-spacing: 2px; font-weight: 700; margin-bottom: 5px;">TOTAL SESSION DURATION</div>
-            <div id="p-total-duration" style="font-size: 28px; font-family: 'JetBrains Mono'; color: var(--accent); font-weight: bold;">00:00:00</div>
+            <div style="font-size: 10px; color: #BBB; letter-spacing: 2px; font-weight: 700; margin-bottom: 5px;">歌单总时长</div>
+            <div id="p-total-duration" style="font-size: 28px; font-family: 'JetBrains Mono'; color: var(--accent); font-weight: bold;">0分00秒</div>
         </div>
         <div style="text-align: right;">
             <div style="font-size: 10px; color: #FFF; background: var(--accent); padding: 6px 15px; letter-spacing: 1px; font-weight: 600;">DANCE MUSIC TOOL</div>
@@ -1219,17 +1219,23 @@ function renderPosterContent() {
             </div>`;
     });
 
-    const totalSeconds = Math.floor(totalMs / 1000);
+
+    if(totalDisplay) totalDisplay.innerText = formatTimeChinese(totalMs);;
+}
+
+function formatTimeChinese(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
     const hrs = Math.floor(totalSeconds / 3600);
     const mins = Math.floor((totalSeconds % 3600) / 60);
     const secs = totalSeconds % 60;
-    const formattedTotal = hrs > 0 
-        ? `${hrs}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`
-        : `${mins}:${secs.toString().padStart(2,'0')}`;
-
-    if(totalDisplay) totalDisplay.innerText = formattedTotal;
+    
+    let result = "";
+    if (hrs > 0) result += hrs + "小时";
+    if (mins > 0 || hrs > 0) result += mins + "分"; // 如果有小时，哪怕0分也显示
+    result += secs.toString().padStart(2, '0') + "秒";
+    return result || "0秒";
 }
-
+    
     async function downloadPoster() {
         const btn = event.target;
         const originalText = btn.innerText;

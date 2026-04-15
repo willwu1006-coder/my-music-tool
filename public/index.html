@@ -748,7 +748,12 @@ async function handleAuth(type) {
         if(data.success) {
             if(type === 'login') {
                 currentUsername = username;
-                document.getElementById('user-display').innerText = `你好, ${username}`;
+                const levelColor = data.sessions >= 30 ? '#ff4d4f' : (data.sessions >= 20 ? '#722ed1' : 'var(--gold)');
+                document.getElementById('user-display').innerHTML = `
+                    ${username} <span style="font-size:10px; color:${levelColor}; border:1px solid ${levelColor}; padding:1px 4px; border-radius:4px; margin-left:5px; font-weight:bold;">
+                        ${data.level}(参与${data.sessions}场)
+                    </span>
+                `;
                 document.getElementById('auth-section').style.display = 'none';
                 document.getElementById('create-room-box').style.display = 'block'; // 登录后显示发起协作
                 loadMyRooms();

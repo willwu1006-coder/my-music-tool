@@ -535,7 +535,7 @@ app.post('/api/calculate', async (req, res) => {
             const colRes = await netease.song_detail({ ids: COLLECTIVE_CONFIG.map(c => c.id).join(','), cookie, realIP: getIp(req) });
             collectivePool = (colRes.body.songs || []).map(s => {
                 const cfg = COLLECTIVE_CONFIG.find(c => c.id == s.id);
-                return { id: s.id, name: s.name, ar: formatArtists(s), dt: s.dt || s.duration, type: cfg.type };
+                return { id: s.id, name: s.name, ar: formatArtists(s), pic: getSongPic(s), dt: s.dt || s.duration, type: cfg.type };
             });
         }
 
@@ -575,7 +575,7 @@ app.post('/api/calculate', async (req, res) => {
                     const raw = baseData[bIdx][basePointers[typeName]++];
                     return { 
                         id: raw.id, name: raw.name, ar: formatArtists(raw), 
-                        // pic: getSongPic(raw),
+                        pic: getSongPic(raw),
                         dt: raw.dt || raw.duration, type: typeName 
                     };
                 }

@@ -247,7 +247,14 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user || !(await bcrypt.compare(password, user.password))) {
         return res.json({ success: false, message: '账号或密码错误' });
     }
-    res.json({ success: true, neteaseCookie: user.neteaseCookie });
+    const sessionCount = user.participatedRooms ? user.participatedRooms.length : 0;
+    const levelInfo = getUserLevel(sessionCount);
+    res.json({ 
+        success: true, 
+        neteaseCookie: user.neteaseCookie,
+        level: levelInfo.name, // 返回等级名称
+        sessions: sessionCount // 返回累计场次
+    });
 });
 
 // 更新网易云 Cookie

@@ -1053,18 +1053,26 @@ function renderAll(songs) {
         window.scrollTo({ top: webPreview.offsetTop - 20, behavior: 'smooth' });
     }
         // 渲染列表项
-    function renderListItems() {
-    const listContainer = document.getElementById('sortable-list');
-    listContainer.innerHTML = finalSongs.map((s, i) => `
-        <div class="song-row" data-id="${s.id}" style="cursor: grab; background: #fff; grid-template-columns: 25px 45px 55px 1fr 35px 45px;">
-            <!-- 1. 序号 -->
-            <span class="mono row-idx" style="font-size:11px; color:#ccc;">${(i+1).toString().padStart(2,'0')}</span>
-            
-            <!-- 2. 图片 -->
-            ${s.pic ? 
-                `<img src="${s.pic}?param=100y100" style="width:35px; height:35px; border-radius:4px; object-fit:cover; flex-shrink:0;">` : 
-                `<div style="width:35px; height:35px; border-radius:4px; background:#f0f0f0; display:flex; align-items:center; justify-content:center; color:#ccc; font-size:10px; flex-shrink:0;">底库</div>`
-            }
+function renderListItems() {
+        const listContainer = document.getElementById('sortable-list');
+        listContainer.innerHTML = finalSongs.map((s, i) => {
+            // --- 区分逻辑：如果没有 addedBy 字段，说明是底库填充的歌 ---
+            const isLibrary = !s.addedBy; 
+            // 底库歌曲设置半透明，并加上灰度滤镜，看起来会“暗”一些
+            const imgStyle = isLibrary 
+                ? "opacity: 0.4; filter: grayscale(100%);" 
+                : "opacity: 1; filter: none;";
+            const labelTip = isLibrary ? "title='系统底库填充'" : "";
+
+            return `
+                <div class="song-row" data-id="${s.id}" style="cursor: grab; background: #fff; display:grid; grid-template-columns: 25px 45px 55px 1fr 35px 45px; align-items: center; gap:8px;">
+                    <!-- 1. 序号 -->
+                    <span class="mono row-idx" style="font-size:11px; color:#ccc;">${(i+1).toString().padStart(2,'0')}</span>
+                    
+                    <!-- 2. 图片 (修正：无论如何都显示图片，但用样式区分) -->
+                    <div style="width:35px; height:35px; flex-shrink:0; background:#f0f0f0; border-radius:4px; overflow:hidden;">
+                        <img src="${s.pic || ''}?param=100y100" ${labelTip} style="width:35px; height:35px; object-fit:cover; display:block; ${imgStyle}">
+                    </div>
 
             <!-- 3. 舞种 -->
             <span style="color:var(--gold); font-weight:600; font-size:12px;">${s.type}</span>
@@ -1170,7 +1178,6 @@ function renderPosterContent() {
     const posterTitle = document.getElementById('p-main-title');
     const totalDisplay = document.getElementById('p-total-duration');
 
-    // 1. 更新标题
     const rawTitle = document.getElementById('display-room-title').innerText;
     const roomName = rawTitle.replace(/[☆★]/g, '').trim();
     posterTitle.innerText = roomName;
@@ -1179,24 +1186,18 @@ function renderPosterContent() {
     let totalMs = 0;
 
     finalSongs.forEach((s, i) => {
-        totalMs += s.dt; // 累加时长
+        totalMs += s.dt;
         const timeStr = Math.floor(s.dt/60000) + ":" + Math.floor((s.dt%60000)/1000).toString().padStart(2,'0');
         
-        // 海报每一行的 HTML
+        // 直接渲染图片，不再判断是否有 pic
         p.innerHTML += `
             <div style="display:flex; align-items:center; padding:15px 0; border-bottom:1px solid #F9F7F0; gap:15px;">
-                <!-- 序号 -->
                 <span style="width:30px; font-family:'JetBrains Mono'; font-size:12px; color:#ccc; flex-shrink:0;">${(i+1).toString().padStart(2,'0')}</span>
 
-                <!-- 歌曲封面图 -->
                 <div style="width:45px; height:45px; flex-shrink:0;">
-                    ${s.pic ? 
-                        `<img src="${s.pic}?param=100y100" style="width:45px; height:45px; border-radius:4px; object-fit:cover; display:block;">` : 
-                        `<div style="width:45px; height:45px; border-radius:4px; background:#f9f9f9; border:1px solid #eee; display:flex; align-items:center; justify-content:center; color:#ddd; font-size:9px;">底库</div>`
-                    }
+                    <img src="${s.pic}?param=100y100" style="width:45px; height:45px; border-radius:4px; object-fit:cover; display:block; background:#f5f5f5;">
                 </div>
 
-                <!-- 歌曲信息 -->
                 <div style="flex:1; overflow:hidden;">
                     <div style="font-size:15px; font-weight:600; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                         <span style="color:var(--gold); font-size:11px; margin-right:6px;">[${s.type}]</span>
@@ -1205,18 +1206,14 @@ function renderPosterContent() {
                     <div style="font-size:11px; color:#999; margin-top:3px;">${s.ar}</div>
                 </div>
 
-                <!-- 时长 -->
                 <span style="width:45px; text-align:right; font-family:'JetBrains Mono'; font-size:13px; color:#bbb; flex-shrink:0;">${timeStr}</span>
             </div>`;
     });
 
-    // 2. 计算并显示总时长 (时:分:秒)
     const totalSeconds = Math.floor(totalMs / 1000);
     const hrs = Math.floor(totalSeconds / 3600);
     const mins = Math.floor((totalSeconds % 3600) / 60);
     const secs = totalSeconds % 60;
-    
-    // 如果超过1小时，显示 时:分:秒，否则只显示 分:秒
     const formattedTotal = hrs > 0 
         ? `${hrs}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`
         : `${mins}:${secs.toString().padStart(2,'0')}`;

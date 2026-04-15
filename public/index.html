@@ -305,6 +305,12 @@
                 </div>
             </div>
         </div>
+        <div id="participants-wall" style="margin-bottom: 20px; padding: 10px; background: rgba(197, 160, 89, 0.05); border-radius: 8px; display: none;">
+            <div style="font-size: 10px; color: var(--gold); font-weight: 700; margin-bottom: 8px; text-transform: uppercase;">本场协作舞友</div>
+            <div id="participants-list" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                <!-- 参与者头像/标签将在这里动态渲染 -->
+            </div>
+        </div>
         <span class="section-label" style="font-size:10px; border:none; margin-bottom:10px;">协作歌单 (点赞实时排序)</span>
         <div id="room-songs-list" style="min-height: 100px; background:#fafafa; border-radius:4px; padding:10px; border: 1px solid #eee;">
             <div style="color:#ccc; text-align:center; font-size:12px;">加载中...</div>
@@ -556,6 +562,31 @@ async function refreshRoomInfo() {
         const res = await fetch(`/api/room/info?roomId=${activeRoomId}&username=${currentUsername}`);
         const data = await res.json();
         if (data.success) {
+            const wall = document.getElementById('participants-wall');
+            const pList = document.getElementById('participants-list');
+            
+            if (data.participants && data.participants.length > 0) {
+                wall.style.display = 'block';
+                pList.innerHTML = data.participants.map(p => {
+                    const sessions = p.sessions || 0;
+                    // 根据场次动态分配颜色
+                    let color = "#999";
+                    if (sessions >= 35) color = "#ff4d4f";      
+                    else if (sessions >= 25) color = "#f5222d"; 
+                    else if (sessions >= 18) color = "#722ed1"; 
+                    else if (sessions >= 12) color = "#1890ff"; 
+                    else if (sessions >= 1) color = "var(--gold)"; 
+
+                    return `
+                        <div style="display:inline-flex; align-items:center; background:#fff; border:1px solid ${color}33; padding:2px 10px; border-radius:15px; font-size:11px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            <span style="font-weight:600; color:var(--accent);">${p.username}</span>
+                            <span style="font-size:9px; color:${color}; margin-left:5px; font-weight:700;">${p.level}</span>
+                        </div>`;
+                }).join('');
+            } else {
+                wall.style.display = 'none'; // 无人参与时隐藏
+            }
+
             // 1. 更新歌单大标题
             document.getElementById('display-room-title').innerText = data.data.name;
             const isFav = data.isFavorited;

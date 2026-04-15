@@ -515,7 +515,7 @@ app.get('/api/user/playlists', async (req, res) => {
 // 核心生成接口
 app.post('/api/calculate', async (req, res) => {
     try {
-        let { duration, cookie, requestedSongs = [], useDefaultFill = true, mode = 'sequential', weights = {} , roomId } = req.body;
+        let { duration, cookie, requestedSongs = [], useDefaultFill = true,  useCollective = false, mode = 'sequential', weights = {} , roomId } = req.body;
         if(!cookie) return res.json({ success: false, message: '未检测到网易云登录状态' });
         
         // 1. 合并协作房间点歌与本地点歌 (优先协作)
@@ -533,11 +533,13 @@ app.post('/api/calculate', async (req, res) => {
         let collectivePool = [];
         let lastWaltzSong = null; // 【新增】用于存放谢幕曲
         if (useDefaultFill) {
+            if (useCollective){
             const colRes = await netease.song_detail({ ids: COLLECTIVE_CONFIG.map(c => c.id).join(','), cookie, realIP: getIp(req) });
             collectivePool = (colRes.body.songs || []).map(s => {
                 const cfg = COLLECTIVE_CONFIG.find(c => c.id == s.id);
                 return { id: s.id, name: s.name, ar: formatArtists(s), pic: getSongPic(s), dt: s.dt || s.duration, type: cfg.type };
             });
+            }
             // 【新增】获取谢幕曲 The Last Waltz (ID: 1334416)
             try {
                 const lWRes = await netease.song_detail({ ids: '1334416', cookie, realIP: getIp(req) });
@@ -645,7 +647,7 @@ app.post('/api/calculate', async (req, res) => {
             }
 
             // 集体舞插入
-            if (useDefaultFill && roundCounter >= 7 && collectivePool.length > 0 && currentMs < targetMs) {
+            if (useCollective && useDefaultFill && roundCounter >= 7 && collectivePool.length > 0 && currentMs < targetMs) {
                 if (addSong(collectivePool.shift())) {
                     roundCounter = 0;
                     songAddedThisRound = true;

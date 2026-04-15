@@ -248,7 +248,7 @@ app.post('/api/auth/login', async (req, res) => {
         return res.json({ success: false, message: '账号或密码错误' });
     }
     const sessionCount = user.participatedRooms ? user.participatedRooms.length : 0;
-    const levelInfo = getUserLevel(sessionCount);
+    const levelInfo = getLevelInfo(user); 
     res.json({ 
         success: true, 
         neteaseCookie: user.neteaseCookie,

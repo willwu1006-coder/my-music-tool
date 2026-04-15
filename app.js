@@ -531,12 +531,28 @@ app.post('/api/calculate', async (req, res) => {
         
         // 2. 准备集体舞
         let collectivePool = [];
+        let lastWaltzSong = null; // 【新增】用于存放谢幕曲
         if (useDefaultFill) {
             const colRes = await netease.song_detail({ ids: COLLECTIVE_CONFIG.map(c => c.id).join(','), cookie, realIP: getIp(req) });
             collectivePool = (colRes.body.songs || []).map(s => {
                 const cfg = COLLECTIVE_CONFIG.find(c => c.id == s.id);
                 return { id: s.id, name: s.name, ar: formatArtists(s), pic: getSongPic(s), dt: s.dt || s.duration, type: cfg.type };
             });
+            // 【新增】获取谢幕曲 The Last Waltz (ID: 1334416)
+            try {
+                const lWRes = await netease.song_detail({ ids: '1334416', cookie, realIP: getIp(req) });
+                if (lWRes.body.songs && lWRes.body.songs[0]) {
+                    const s = lWRes.body.songs[0];
+                    lastWaltzSong = { 
+                        id: s.id, 
+                        name: s.name, 
+                        ar: formatArtists(s), 
+                        pic: getSongPic(s),
+                        dt: s.dt || s.duration, 
+                        type: '谢幕舞' // 标注为谢幕舞
+                    };
+                }
+            } catch (e) { console.error("加载谢幕曲失败"); }
         }
 
         // 3. 整理点歌池 (修正：动态创建 Key，支持自定义舞种)
@@ -600,11 +616,13 @@ app.post('/api/calculate', async (req, res) => {
 
             // 【核心修正 A】：优先处理所有不在 7 大类中的自定义舞种点歌
             for (let type in requestPool) {
+                if (currentMs >= targetMs) break;
                 const isDefaultType = DEFAULT_PLAYLISTS.some(p => p.name === type);
                 if (!isDefaultType && requestPool[type].length > 0) {
                     if (addSong(requestPool[type].shift())) songAddedThisRound = true;
                 }
             }
+            if (currentMs >= targetMs) break;
 
             // 【核心修正 B】：执行正常的舞种循环
             if (mode === 'weighted') {
@@ -616,6 +634,7 @@ app.post('/api/calculate', async (req, res) => {
                 }
             } else {
                 for (let i = 0; i < 7; i++) {
+                    if (currentMs >= targetMs) break;
                     const typeName = DEFAULT_PLAYLISTS[i].name;
                     const prob = weights[typeName] ?? 1.0;
                     if (Math.random() < prob) {
@@ -626,7 +645,7 @@ app.post('/api/calculate', async (req, res) => {
             }
 
             // 集体舞插入
-            if (useDefaultFill && roundCounter >= 7 && collectivePool.length > 0) {
+            if (useDefaultFill && roundCounter >= 7 && collectivePool.length > 0 && currentMs < targetMs) {
                 if (addSong(collectivePool.shift())) {
                     roundCounter = 0;
                     songAddedThisRound = true;
@@ -638,6 +657,14 @@ app.post('/api/calculate', async (req, res) => {
                 const hasAnyRequest = Object.values(requestPool).some(arr => arr.length > 0);
                 const hasAnyBase = useDefaultFill && DEFAULT_PLAYLISTS.some(p => baseData[DEFAULT_PLAYLISTS.indexOf(p)][basePointers[p.name]]);
                 if (!hasAnyRequest && !hasAnyBase) break;
+            }
+        }
+        // 【新增逻辑】如果是填充模式，且成功获取到了谢幕曲，则强行加在最后
+        if (useDefaultFill && lastWaltzSong) {
+            // 检查是否已经在列表里（防止重复），不在则添加
+            if (!usedIds.has(lastWaltzSong.id)) {
+                result.push(lastWaltzSong);
+                currentMs += lastWaltzSong.dt;
             }
         }
 

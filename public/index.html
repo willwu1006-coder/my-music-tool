@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dance Music Tool</title>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;600&family=JetBrains+Mono&display=swap');
@@ -391,13 +392,20 @@
     <div id="p-container"></div>
 
     <!-- 4. 海报底部：显示总时长 -->
-    <div style="margin-top: 50px; border-top: 2px solid var(--accent); padding-top: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div style="margin-top: 50px; border-top: 2px solid var(--accent); padding-top: 20px; display: flex; justify-content: space-between; align-items: center;">
         <div>
             <div style="font-size: 10px; color: #BBB; letter-spacing: 2px; font-weight: 700; margin-bottom: 5px;">歌单总时长</div>
-            <div id="p-total-duration" style="font-size: 28px; font-family: 'JetBrains Mono'; color: var(--accent); font-weight: bold;">0分00秒</div>
+            <div id="p-total-duration" style="font-size: 26px; font-family: 'JetBrains Mono'; color: var(--accent); font-weight: bold;">0分00秒</div>
         </div>
-        <div style="text-align: right;">
-            <div style="font-size: 10px; color: #FFF; background: var(--accent); padding: 6px 15px; letter-spacing: 1px; font-weight: 600;">DANCE MUSIC TOOL</div>
+
+        <!-- 【新增】二维码区域 -->
+        <div id="p-qr-area" style="text-align: right; display: flex; align-items: center; gap: 12px;">
+            <div style="text-align: right;">
+                <div style="font-size: 10px; color: var(--gold); font-weight: 700; letter-spacing: 1px;">SCAN TO PLAY</div>
+                <div style="font-size: 9px; color: #BBB; margin-top: 2px;">扫码收藏网易云歌单</div>
+            </div>
+            <!-- 二维码容器 -->
+            <div id="p-qrcode" style="width: 70px; height: 70px; background: #fff; padding: 5px; border: 1px solid #eee; border-radius: 4px;"></div>
         </div>
     </div>
 </div>
@@ -408,6 +416,7 @@
     const styles = ["慢三", "平四", "伦巴", "并四", "快三", "慢四", "吉特巴"];
     let timer = null; // 声明定时器变量
     let activeRoomId = null; // 当前协作房间ID
+    let lastGeneratedPlaylistId = null; // 用于存储最后一次同步成功的歌单ID
     
     document.addEventListener('DOMContentLoaded', () => {
         // 1. 模式切换监听
@@ -1184,8 +1193,9 @@ function renderListItems() {
         });
         const data = await res.json();
         if(data.success) {
-            alert('已成功同步到网易云！');
-            renderPosterContent(); // 更新海报层
+            lastGeneratedPlaylistId = data.playlistId; // 【重点】记录下刚生成的歌单ID
+            alert('歌单同步成功！');
+            renderPosterContent(); 
             btn.innerText = '同步成功 (可再次同步)';
             btn.disabled = false;
         } else {
@@ -1198,40 +1208,12 @@ function renderListItems() {
     }
 }
 
-    // 专门给海报渲染的函数
-    // function renderPosterContent() {
-    //     const p = document.getElementById('p-container');
-    //     p.innerHTML = ''; // 清空旧内容
-        
-    //     if (!finalSongs || finalSongs.length === 0) {
-    //         p.innerHTML = '<div style="text-align:center; padding:50px; color:#ccc;">暂无歌曲数据</div>';
-    //         return;
-    //     }
-    
-    //     finalSongs.forEach((s, i) => {
-    //         const timeStr = Math.floor(s.dt/60000) + ":" + Math.floor((s.dt%60000)/1000).toString().padStart(2,'0');
-            
-    //         // 采用和预览列表类似的上下结构，确保美观且对齐
-    //         p.innerHTML += `
-    //             <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid #F9F7F0;">
-    //                 <span style="width:40px; font-family:'JetBrains Mono'; font-size:14px; color:#bbb;">${(i+1).toString().padStart(2,'0')}</span>
-    //                 <span style="width:70px; color:var(--gold); font-weight:bold; font-size:14px;">${s.type}</span>
-    //                 <div style="flex:1; margin: 0 15px; overflow:hidden;">
-    //                     <div style="font-weight:600; font-size:16px; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
-    //                     <div style="font-size:12px; color:#999; margin-top:2px;">${s.ar}</div>
-    //                 </div>
-    //                 <span style="width:50px; text-align:right; font-family:'JetBrains Mono'; font-size:13px; color:#bbb;">${timeStr}</span>
-    //             </div>`;
-    //     });
-    
-    //     // 更新日期和总计（可选）
-    //     const title = document.getElementById('display-room-title').innerText;
-    //     document.getElementById('p-date').innerText = title + " - " + new Date().toLocaleDateString();
-    // }
 function renderPosterContent() {
     const p = document.getElementById('p-container');
     const posterTitle = document.getElementById('p-main-title');
     const totalDisplay = document.getElementById('p-total-duration');
+    const qrContainer = document.getElementById('p-qrcode');
+    const qrArea = document.getElementById('p-qr-area');
 
     const rawTitle = document.getElementById('display-room-title').innerText;
     const roomName = rawTitle.replace(/[☆★]/g, '').trim();
@@ -1239,6 +1221,27 @@ function renderPosterContent() {
 
     p.innerHTML = ''; 
     let totalMs = 0;
+
+    if (lastGeneratedPlaylistId) {
+        qrArea.style.opacity = "1"; // 显示二维码区域
+        qrContainer.innerHTML = ''; // 清空之前的二维码
+        
+        // 网易云歌单的标准链接
+        const playlistUrl = `https://music.163.com/#/playlist?id=${lastGeneratedPlaylistId}`;
+        
+        new QRCode(qrContainer, {
+            text: playlistUrl,
+            width: 70,
+            height: 70,
+            colorDark: "#1A3A5F", // 使用你的主题深蓝色
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H // 高容错率
+        });
+    } else {
+        // 如果还没同步（没有歌单ID），先隐藏二维码区或显示提示
+        qrArea.style.opacity = "0.2"; 
+        qrContainer.innerHTML = '<div style="font-size:8px; color:#ccc; text-align:center; margin-top:20px;">同步后<br>生成码</div>';
+    }
 
     finalSongs.forEach((s, i) => {
         totalMs += s.dt;

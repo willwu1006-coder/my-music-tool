@@ -676,16 +676,27 @@ app.post('/api/calculate', async (req, res) => {
             if (requestPool[typeName]?.length > 0) return requestPool[typeName].shift();
             // 没点歌则找底库 (底库只有7种默认舞)
             if (useDefaultFill) {
-                const bIdx = DEFAULT_PLAYLISTS.findIndex(p => p.name === typeName);
-                if (bIdx !== -1 && baseData[bIdx] && baseData[bIdx][basePointers[typeName]]) {
-                    const raw = baseData[bIdx][basePointers[typeName]++];
-                    return { 
-                        id: raw.id, name: raw.name, ar: formatArtists(raw), 
-                        pic: getSongPic(raw),
-                        dt: raw.dt || raw.duration, type: typeName 
-                    };
+                    const bIdx = DEFAULT_PLAYLISTS.findIndex(p => p.name === typeName);
+                    if (bIdx !== -1 && baseData[bIdx]) {
+                        // 【重点优化】：如果底库当前的歌已经被用过了（比如你手动点过了）
+                        // 我们就让指针一直往后走，直到找到一首“全新的”歌
+                        while (basePointers[typeName] < baseData[bIdx].length) {
+                            const raw = baseData[bIdx][basePointers[typeName]++];
+                            const rawIdStr = String(raw.id);
+                            
+                            if (!usedIds.has(rawIdStr)) {
+                                return { 
+                                    id: rawIdStr, 
+                                    name: raw.name, 
+                                    ar: formatArtists(raw), 
+                                    pic: getSongPic(raw),
+                                    dt: raw.dt || raw.duration, 
+                                    type: typeName 
+                                };
+                            }
+                        }
+                    }
                 }
-            }
             return null;
         }
 

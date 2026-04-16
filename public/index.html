@@ -223,6 +223,25 @@
             background: var(--gold);
             color: #fff;
         }
+        #p-main-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 42px !important;
+            color: var(--accent) !important;
+            text-align: center;
+            margin: 0;
+            text-transform: uppercase; /* 全大写 */
+            letter-spacing: 6px;       /* 加大字间距，瞬间变高级 */
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        
+        /* 装饰性分割线 */
+        .poster-divider {
+            width: 80px;
+            height: 2px;
+            background: linear-gradient(to right, transparent, var(--gold), transparent);
+            margin: 20px auto 35px auto;
+        }
     </style>
 </head>
 <body>
@@ -409,7 +428,7 @@
     <h1 id="p-main-title" style="text-align:center; font-family:'Playfair Display'; font-size:45px; color:var(--accent); margin:0; letter-spacing: -1px;">Setlist</h1>
     
     <!-- 2. 分割线 (装饰用) -->
-    <div style="width:60px; height:3px; background:var(--gold); margin: 25px auto 40px auto;"></div>
+    <div class="poster-divider"></div>
 
     <!-- 3. 歌曲列表容器 -->
     <div id="p-container"></div>

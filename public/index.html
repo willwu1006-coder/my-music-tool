@@ -1064,12 +1064,19 @@ function renderStaging() {
             </select>`;
 
         return `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee; gap:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee; gap:12px;">
+                <!-- 【重点：加入封面图展示】 -->
+                <img src="${s.pic || ''}?param=80y80" style="width:35px; height:35px; border-radius:4px; object-fit:cover; background:#f5f5f5; flex-shrink:0;">
+                
                 <div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:#333;">
-                    ${s.name} - <span style="color:#999;">${s.ar}</span>
+                    ${s.name} <small style="color:#999;">- ${s.ar}</small>
                 </div>
+                
                 <div class="play-btn" onclick="playSong('${s.id}')">▶️</div>
-                ${actionHtml}
+                
+                <div style="width:75px; display:flex; justify-content:flex-end;">
+                    ${actionHtml}
+                </div>
             </div>
         `;
     }).join('');

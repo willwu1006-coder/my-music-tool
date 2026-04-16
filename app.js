@@ -454,7 +454,7 @@ app.post('/api/room/add', async (req, res) => {
 
             if (currentAddedCount >= levelInfo.limit) {
                 const tip = username 
-                    ? `您的等级[${levelInfo.name}]本场限点${levelInfo.limit}首。多参加舞会可升级！`
+                    ? `您的等级[${levelInfo.name}]本场限点${levelInfo.limit}首。登录或参加舞会升级可提高点歌上限！`
                     : `匿名游客每场限点${levelInfo.limit}首，登录账号可点更多并累计等级。`;
                 return res.json({ success: false, message: tip });
             }

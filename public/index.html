@@ -205,6 +205,24 @@
         #room-songs-list::-webkit-scrollbar-track {
             background: #f1f1f1;
         }
+        /* 精致的小型添加按钮 */
+        .btn-add-sm {
+            width: 60px; /* 缩减宽度 */
+            padding: 3px 0; /* 缩减高度 */
+            font-size: 10px; /* 字体更小 */
+            background: transparent; /* 背景透明 */
+            color: var(--gold); /* 文字金色 */
+            border: 1px solid var(--gold); /* 金色细边框 */
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0; /* 防止被挤压 */
+        }
+        
+        .btn-add-sm:active {
+            background: var(--gold);
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -1037,8 +1055,8 @@ function renderStaging() {
     list.innerHTML = stagedSongs.map((s, idx) => {
         // 如果歌曲已经有了 type (底库浏览)，直接显示添加按钮
         const actionHtml = s.type ? 
-            `<button onclick="labelSong(${idx}, '${s.type}')" style="width:85px; margin:0; padding:5px 0; font-size:11px; background:var(--gold); color:#fff; border:none; border-radius:4px; cursor:pointer;">确定添加</button>` :
-            `<select onchange="labelSong(${idx}, this.value)" style="width:85px; margin:0; padding:4px 0; font-size:11px; flex-shrink:0;">
+            `<button onclick="labelSong(${idx}, '${s.type}')" class="btn-add-sm">添加</button>` :
+            `<select onchange="labelSong(${idx}, this.value)" style="width:75px; margin:0; padding:4px 0; font-size:11px; flex-shrink:0; border-bottom:1px solid #ddd;">
                 <option value="">标注...</option>
                 ${styles.map(t => `<option value="${t}">${t}</option>`).join('')}
                 <option value="CUSTOM" style="color:var(--gold);">自定义...</option>

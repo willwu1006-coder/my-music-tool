@@ -251,7 +251,12 @@
             <span style="color: var(--gold); font-weight: 600;">温馨提示：</span>
             可搜索单曲或导入歌单，未填将使用<b>默认曲库</b>，标注完成将自动加入歌单
         </p>
-
+        <div style="margin-bottom: 15px;">
+            <div style="font-size: 11px; color: #999; margin-bottom: 8px; letter-spacing: 1px;">推荐曲目浏览：</div>
+            <div id="library-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                <!-- 动态生成标签 -->
+            </div>
+        </div>
         <div style="display:flex; gap:10px;">
             <input type="text" id="search-in" placeholder="搜索歌曲或歌手..." style="margin:0">
             <button onclick="searchSong()" class="btn btn-main" style="width:80px; margin:0; background:#333;">搜索</button>
@@ -433,6 +438,48 @@
             joinRoom(rid);
         }
     });
+
+    // 1. 页面加载时生成推荐标签
+    document.addEventListener('DOMContentLoaded', () => {
+        const tagContainer = document.getElementById('library-tags');
+        // styles = ["慢三", "平四", "伦巴", "并四", "快三", "慢四", "吉特巴"]
+        tagContainer.innerHTML = styles.map(t => `
+            <span onclick="browseLibrary('${t}')" style="cursor:pointer; font-size:11px; padding:4px 12px; background:#fff; border:1px solid #eee; border-radius:15px; color:var(--accent); transition:0.2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)';" onmouseout="this.style.borderColor='#eee';this.style.color='var(--accent)';">
+                ${t}
+            </span>
+        `).join('');
+    });
+    
+    // 2. 点击标签浏览底库
+    async function browseLibrary(type) {
+        const area = document.getElementById('staging-area');
+        const list = document.getElementById('staging-list');
+        
+        area.style.display = 'block';
+        list.innerHTML = `<div style="padding:20px; text-align:center; font-size:12px; color:var(--gold);">正在调取 [${type}] 经典底库...</div>`;
+        
+        // 自动滚动到展示区
+        area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    
+        try {
+            const res = await fetch(`/api/library/list?type=${encodeURIComponent(type)}&cookie=${encodeURIComponent(userCookie)}`);
+            const data = await res.json();
+            
+            if (data.success) {
+                stagedSongs = data.songs;
+                // 渲染列表 (复用你现有的渲染逻辑)
+                renderStaging();
+                // 特殊优化：将下拉框默认选中当前点击的舞种
+                setTimeout(() => {
+                    document.querySelectorAll('#staging-list select').forEach(sel => sel.value = type);
+                }, 100);
+            } else {
+                list.innerHTML = `<div style="padding:20px; text-align:center; color:red;">${data.message}</div>`;
+            }
+        } catch (e) {
+            list.innerHTML = `<div style="padding:20px; text-align:center; color:red;">网络连接失败</div>`;
+        }
+    }
 
     let currentPlayingId = null;
 

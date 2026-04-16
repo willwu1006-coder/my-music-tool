@@ -456,9 +456,8 @@
         const list = document.getElementById('staging-list');
         
         area.style.display = 'block';
-        list.innerHTML = `<div style="padding:20px; text-align:center; font-size:12px; color:var(--gold);">正在调取 [${type}] 经典底库...</div>`;
+        list.innerHTML = `<div style="padding:20px; text-align:center; font-size:12px; color:var(--gold);">正在调取 [${type}] 完整底库...</div>`;
         
-        // 自动滚动到展示区
         area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     
         try {
@@ -466,13 +465,8 @@
             const data = await res.json();
             
             if (data.success) {
-                stagedSongs = data.songs;
-                // 渲染列表 (复用你现有的渲染逻辑)
-                renderStaging();
-                // 特殊优化：将下拉框默认选中当前点击的舞种
-                setTimeout(() => {
-                    document.querySelectorAll('#staging-list select').forEach(sel => sel.value = type);
-                }, 100);
+                stagedSongs = data.songs; // 这里的每首歌都自带 type: type 字段
+                renderStaging(); 
             } else {
                 list.innerHTML = `<div style="padding:20px; text-align:center; color:red;">${data.message}</div>`;
             }
@@ -1010,75 +1004,106 @@ async function startLogin() {
         importPlaylist(); 
     }
 
-    function renderStaging() {
-        const area = document.getElementById('staging-area'), list = document.getElementById('staging-list');
-        area.style.display = stagedSongs.length ? 'block' : 'none';
+    // function renderStaging() {
+    //     const area = document.getElementById('staging-area'), list = document.getElementById('staging-list');
+    //     area.style.display = stagedSongs.length ? 'block' : 'none';
         
-        list.innerHTML = stagedSongs.map((s, idx) => `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee; font-size:12px;">
+    //     list.innerHTML = stagedSongs.map((s, idx) => `
+    //         <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee; font-size:12px;">
+    //             <div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:#333;">
+    //                 ${s.name} - <span style="color:#999;">${s.ar}</span>
+    //             </div>
+                
+    //             <!-- 2. 中间播放键：作为独立节点，不受文字溢出影响 -->
+    //             <div class="play-btn" onclick="playSong('${s.id}')">▶️</div>
+                
+    //             <select onchange="labelSong(${idx}, this.value)" style="width:80px; margin:0; padding:2px; font-size:11px;">
+    //                 <option value="">标注...</option>
+    //                 ${styles.map(t => `<option value="${t}">${t}</option>`).join('')}
+    //                 <option value="CUSTOM">自定义...</option> <!-- 补上这一行 -->
+    //                 <option value="SKIP">跳过</option>
+    //             </select>
+    //         </div>
+    //     `).join('');
+    // }
+function renderStaging() {
+    const area = document.getElementById('staging-area'), list = document.getElementById('staging-list');
+    if (!stagedSongs || stagedSongs.length === 0) {
+        area.style.display = 'none';
+        return;
+    }
+    area.style.display = 'block';
+    
+    list.innerHTML = stagedSongs.map((s, idx) => {
+        // 如果歌曲已经有了 type (底库浏览)，直接显示添加按钮
+        const actionHtml = s.type ? 
+            `<button onclick="labelSong(${idx}, '${s.type}')" style="width:85px; margin:0; padding:5px 0; font-size:11px; background:var(--gold); color:#fff; border:none; border-radius:4px; cursor:pointer;">确定添加</button>` :
+            `<select onchange="labelSong(${idx}, this.value)" style="width:85px; margin:0; padding:4px 0; font-size:11px; flex-shrink:0;">
+                <option value="">标注...</option>
+                ${styles.map(t => `<option value="${t}">${t}</option>`).join('')}
+                <option value="CUSTOM" style="color:var(--gold);">自定义...</option>
+                <option value="SKIP">跳过</option>
+            </select>`;
+
+        return `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee; gap:10px;">
                 <div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:#333;">
                     ${s.name} - <span style="color:#999;">${s.ar}</span>
                 </div>
-                
-                <!-- 2. 中间播放键：作为独立节点，不受文字溢出影响 -->
                 <div class="play-btn" onclick="playSong('${s.id}')">▶️</div>
-                
-                <select onchange="labelSong(${idx}, this.value)" style="width:80px; margin:0; padding:2px; font-size:11px;">
-                    <option value="">标注...</option>
-                    ${styles.map(t => `<option value="${t}">${t}</option>`).join('')}
-                    <option value="CUSTOM">自定义...</option> <!-- 补上这一行 -->
-                    <option value="SKIP">跳过</option>
-                </select>
+                ${actionHtml}
             </div>
-        `).join('');
+        `;
+    }).join('');
+}
+
+async function labelSong(idx, type) {
+    if(!type) return;
+    
+    let finalType = type;
+    const songToLabel = stagedSongs[idx]; // 先把歌拿出来，防止后面 splice 导致索引错位
+    if(!songToLabel) return;
+
+    if(type === 'CUSTOM') {
+        const userType = prompt("请输入该舞曲的舞种名称:");
+        if(!userType || userType.trim() === "") return;
+        finalType = userType.trim();
     }
 
-    function labelSong(idx, type) {
-            if(!type) return;
-            let finalType = type;
+    if(type !== 'SKIP') {
+        const song = { ...songToLabel, type: finalType };
         
-            // --- 补全处理自定义输入 ---
-            if(type === 'CUSTOM') {
-                const userType = prompt("请输入该舞曲的舞种名称:");
-                if(!userType || userType.trim() === "") {
-                    renderStaging(); // 刷新一下重置选择框
-                    return;
-                }
-                finalType = userType.trim();
-            }
-
-            if(type && type !== 'SKIP') {
-                const song = { ...stagedSongs[idx], type: finalType };
-                
-            if (activeRoomId) {
-                    // 发送到服务器
-                    fetch('/api/room/add', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            roomId: activeRoomId, 
-                            username: currentUsername || '匿名舞友', 
-                            song: song 
-                        })
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if(data.success) {
-                            // 成功后延迟 300ms 刷新，确保数据库写入完成
-                            setTimeout(refreshRoomInfo, 300);
-                        } else {
-                            alert('添加失败：' + (data.message || '未知原因'));
-                        }
-                    })
-                    .catch(err => console.error('网络请求失败:', err));
+        if (activeRoomId) {
+            try {
+                const res = await fetch('/api/room/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ roomId: activeRoomId, username: currentUsername || '匿名舞友', song: song })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    showStatusTip(`✅ 已同步到协作厅`);
+                    setTimeout(refreshRoomInfo, 300);
                 } else {
-                    reqSongs.push(song);
-                    updateReqUI();
+                    alert(data.message);
                 }
+            } catch(e) { alert('同步失败'); }
+        } else {
+            // 本地模式检查重复
+            if (reqSongs.some(rs => String(rs.id) === String(song.id))) {
+                alert('已在本地清单中');
+            } else {
+                reqSongs.push(song);
+                updateReqUI();
+                showStatusTip(`✅ 已添加`);
             }
-            stagedSongs.splice(idx, 1);
-            renderStaging();
         }
+    }
+    
+    // 标注后一律从待处理区域移除该项
+    stagedSongs.splice(idx, 1);
+    renderStaging();
+}
 
     function updateReqUI() {
         document.getElementById('my-requests').innerHTML = reqSongs.map((s,i) => `

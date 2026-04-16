@@ -77,6 +77,36 @@ const COLLECTIVE_CONFIG = [
     { id: '349892', type: '集体舞16步' }
 ];
 
+// 获取特定舞种的底库歌曲清单
+app.get('/api/library/list', async (req, res) => {
+    try {
+        const { type, cookie } = req.query;
+        // 1. 找到对应的默认歌单 ID
+        const playlist = DEFAULT_PLAYLISTS.find(p => p.name === type);
+        if (!playlist) return res.json({ success: false, message: '舞种不存在' });
+
+        // 2. 请求网易云接口获取歌单全量歌曲
+        const result = await netease.playlist_track_all({ 
+            id: playlist.id, 
+            cookie: cookie || "", 
+            realIP: getIp(req) 
+        });
+
+        const songs = (result.body.songs || []).map(s => ({
+            id: s.id,
+            name: s.name,
+            ar: formatArtists(s),
+            pic: getSongPic(s),
+            dt: s.dt || s.duration,
+            type: type // 预设好舞种，方便一键添加
+        }));
+
+        res.json({ success: true, songs });
+    } catch (e) {
+        res.json({ success: false, message: '获取底库失败' });
+    }
+});
+
 async function getRealId(input) {
     let str = input.trim();
     if (!str) return null;

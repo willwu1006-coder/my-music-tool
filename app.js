@@ -765,16 +765,6 @@ app.post('/api/calculate', async (req, res) => {
             safetyIdx++;
             let songAddedThisRound = false;
 
-            // 【核心修正 A】：优先处理所有不在 7 大类中的自定义舞种点歌
-            for (let type in requestPool) {
-                if (currentMs >= targetMs) break;
-                const isDefaultType = DEFAULT_PLAYLISTS.some(p => p.name === type);
-                if (!isDefaultType && requestPool[type].length > 0) {
-                    if (addSong(requestPool[type].shift())) songAddedThisRound = true;
-                }
-            }
-            if (currentMs >= targetMs) break;
-
             // 【核心修正 B】：执行正常的舞种循环
             if (mode === 'weighted') {
                 const typeName = pickTypeByWeight(weights, lastType); 
@@ -794,13 +784,32 @@ app.post('/api/calculate', async (req, res) => {
                     }
                 }
             }
+            if (currentMs >= targetMs) break;
+          
+            if (roundCounter >= 7) {
+                // 找出点歌池里所有不在 7 大分类里的舞种
+                const customTypes = Object.keys(requestPool).filter(type => 
+                    !DEFAULT_PLAYLISTS.some(p => p.name === type) && requestPool[type].length > 0
+                );
 
-            // 集体舞插入
-            if (useCollective && useDefaultFill && roundCounter >= 7 && collectivePool.length > 0 && currentMs < targetMs) {
-                if (addSong(collectivePool.shift())) {
-                    roundCounter = 0;
-                    songAddedThisRound = true;
+                if (customTypes.length > 0) {
+                    // 取出一首点赞最高的自定义舞曲
+                    const targetType = customTypes[0];
+                    if (addSong(requestPool[targetType].shift())) {
+                        songAddedThisRound = true;
+                        // 注意：这里不重置 roundCounter，因为后面可能还要插集体舞
+                    }
                 }
+
+                // --- 3. 检查是否插入集体舞 ---
+                if (useCollective && useDefaultFill && collectivePool.length > 0 && currentMs < targetMs) {
+                    if (addSong(collectivePool.shift())) {
+                        songAddedThisRound = true;
+                    }
+                }
+
+                // 一轮大循环（核心7种 + 可能的自定义 + 可能的集体舞）结束后，重置计数器
+                roundCounter = 0; 
             }
 
             // 终止条件判断：如果这一整轮没有任何一首歌能加进去，说明所有池子都干了

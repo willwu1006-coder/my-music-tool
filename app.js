@@ -68,12 +68,16 @@ const DEFAULT_PLAYLISTS = [
     { name: "并四", id: "8842144798" },
     { name: "快三", id: "8425599404" },
     { name: "慢四", id: "8425648233" },
-    { name: "吉特巴", id: "8425582396" },
+    { name: "吉特巴", id: "8425582396" }
+];
+
+const EXTRA_LIBRARY = [
     { name: "华尔兹", id: "8446873169" },
     { name: "探戈", id: "8446954949" },
     { name: "狐步", id: "8444015313" },
     { name: "快步", id: "8863229504" }
 ];
+const ALL_LIBRARIES = [...DEFAULT_PLAYLISTS, ...EXTRA_LIBRARY];
 
 const COLLECTIVE_CONFIG = [
     { id: '20953761', type: '集体恰恰' },
@@ -97,7 +101,7 @@ app.get('/api/library/list', async (req, res) => {
             return res.json({ success: true, songs: libraryCache[type].songs });
         }
 
-        const playlist = DEFAULT_PLAYLISTS.find(p => p.name === type);
+        const playlist = ALL_LIBRARIES.find(p => p.name === type);
         if (!playlist) return res.json({ success: false });
 
         // --- 3. 缓存失效时，才去请求网易云 ---
@@ -133,7 +137,7 @@ app.get('/api/library/list', async (req, res) => {
 // 【自动预加载】服务器启动后，每隔 30 分钟自动更新一次内存底库
 async function prefetchLibrary() {
     console.log('--- 开始预加载底库数据 ---');
-    for (const p of DEFAULT_PLAYLISTS) {
+    for (const p of ALL_LIBRARIES) {
         try {
             const result = await netease.playlist_track_all({ id: p.id });
             libraryCache[p.name] = {

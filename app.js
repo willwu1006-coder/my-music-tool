@@ -77,15 +77,27 @@ const COLLECTIVE_CONFIG = [
     { id: '349892', type: '集体舞16步' }
 ];
 
-// 获取特定舞种的底库歌曲清单
+// --- 1. 定义全局缓存对象和过期时间 (30分钟) ---
+const libraryCache = {};
+const CACHE_DURATION = 30 * 60 * 1000; 
+
+
 app.get('/api/library/list', async (req, res) => {
     try {
         const { type, cookie } = req.query;
-        // 1. 找到对应的默认歌单 ID
-        const playlist = DEFAULT_PLAYLISTS.find(p => p.name === type);
-        if (!playlist) return res.json({ success: false, message: '舞种不存在' });
+        const now = Date.now();
 
-        // 2. 请求网易云接口获取歌单全量歌曲
+        // --- 2. 检查缓存：如果该舞种已有数据且未过期，直接返回 ---
+        if (libraryCache[type] && (now - libraryCache[type].timestamp < CACHE_DURATION)) {
+            console.log(`从缓存读取底库: ${type}`);
+            return res.json({ success: true, songs: libraryCache[type].songs });
+        }
+
+        const playlist = DEFAULT_PLAYLISTS.find(p => p.name === type);
+        if (!playlist) return res.json({ success: false });
+
+        // --- 3. 缓存失效时，才去请求网易云 ---
+        console.log(`正在从网易云调取底库: ${type}...`);
         const result = await netease.playlist_track_all({ 
             id: playlist.id, 
             cookie: cookie || "", 
@@ -98,14 +110,44 @@ app.get('/api/library/list', async (req, res) => {
             ar: formatArtists(s),
             pic: getSongPic(s),
             dt: s.dt || s.duration,
-            type: type // 预设好舞种，方便一键添加
+            type: type 
         }));
+
+        // --- 4. 存入缓存 ---
+        libraryCache[type] = {
+            songs: songs,
+            timestamp: now
+        };
 
         res.json({ success: true, songs });
     } catch (e) {
-        res.json({ success: false, message: '获取底库失败' });
+        console.error('获取底库失败:', e);
+        res.json({ success: false });
     }
 });
+
+// 【自动预加载】服务器启动后，每隔 30 分钟自动更新一次内存底库
+async function prefetchLibrary() {
+    console.log('--- 开始预加载底库数据 ---');
+    for (const p of DEFAULT_PLAYLISTS) {
+        try {
+            const result = await netease.playlist_track_all({ id: p.id });
+            libraryCache[p.name] = {
+                songs: result.body.songs.map(s => ({
+                    id: s.id, name: s.name, ar: formatArtists(s),
+                    pic: getSongPic(s), dt: s.dt || s.duration, type: p.name
+                })),
+                timestamp: Date.now()
+            };
+            console.log(`✅ 已加载舞种: ${p.name}`);
+        } catch (e) { console.log(`❌ 预加载失败: ${p.name}`); }
+    }
+    console.log('--- 底库预加载完成 ---');
+}
+
+// 启动执行一次，之后每 30 分钟跑一次
+prefetchLibrary();
+setInterval(prefetchLibrary, CACHE_DURATION);
 
 async function getRealId(input) {
     let str = input.trim();

@@ -25,11 +25,14 @@ const LEVEL_CONFIG = [
     { min: 35, name: "舞林神话", limit: 99, color: "#ff4d4f" },
     { min: 25, name: "舞林盟主", limit: 20, color: "#f5222d" },
     { min: 18, name: "舞林至尊", limit: 15, color: "#722ed1" },
-    { min: 12, name: "舞林高手", limit: 12, color: "#1890ff" },
-    { min: 8,  name: "华彩舞匠", limit: 10, color: "#13c2c2" },
-    { min: 6,  name: "节奏诗人", limit: 8,  color: "#52c41a" },
-    { min: 4,  name: "步履初盈", limit: 6,  color: "#faad14" },
-    { min: 2,  name: "初级舞友", limit: 5,  color: "#fa8c16" },
+    { min: 12, name: "一代宗师", limit: 12, color: "#1890ff" },
+    { min: 8,  name: "节奏诗人", limit: 10, color: "#13c2c2" },
+    { min: 7,  name: "凤舞霓裳", limit: 9,  color: "#52c41a" },
+    { min: 6,  name: "翩跹舞侠", limit: 8,  color: "#73d13d" },
+    { min: 5,  name: "舞林高手", limit: 7,  color: "#faad14" },
+    { min: 4,  name: "舞坛新秀", limit: 6,  color: "#ffc53d" },
+    { min: 3,  name: "入室弟子", limit: 5,  color: "#fa8c16" },
+    { min: 2,  name: "习舞学徒", limit: 4,  color: "#ffa940" },
     { min: 0,  name: "萌新舞友", limit: 3,  color: "#999" }
 ];
 

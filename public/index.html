@@ -14,16 +14,6 @@
         .container { width: 100%; max-width: 650px; }
         .card { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #f0ead6; }
         .section-label { font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Montserrat:wght@300;400;600&display=swap');
-
-        :root {
-            --primary-bg: #0a0e14;
-            --glass-bg: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --accent-gold: linear-gradient(135deg, #c5a059 0%, #ffdfa1 50%, #c5a059 100%);
-            --neon-blue: #00d2ff;
-            --text-main: #e0e0e0;
-        }
         
         /* 找到并替换原来的 .song-row 样式 */
         .song-row-collab {
@@ -252,125 +242,146 @@
             background: linear-gradient(to right, transparent, var(--gold), transparent);
             margin: 20px auto 35px auto;
         }
-        /* --- V3 PRO MAX ULTRA DESIGN --- */  
+        /* --- V4 ELEGANT LIGHT (香槟象牙白) --- */
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Montserrat:wght@400;600&display=swap');
+        
+        :root {
+            --bg-color: #FDFCF8;          /* 极浅的象牙色背景 */
+            --card-bg: rgba(255, 255, 255, 0.85); /* 雾面半透明白 */
+            --accent-gold: #C5A059;       /* 经典香槟金 */
+            --text-dark: #2C2C2C;         /* 深灰色文字，比纯黑更高级 */
+            --border-color: rgba(197, 160, 89, 0.2);
+        }
+        
         body {
-            background: var(--primary-bg);
+            background-color: var(--bg-color);
             background-image: 
-                radial-gradient(circle at 10% 20%, rgba(26, 58, 95, 0.2) 0%, transparent 20%),
-                radial-gradient(circle at 90% 80%, rgba(197, 160, 89, 0.1) 0%, transparent 20%);
-            color: var(--text-main);
+                radial-gradient(at 0% 0%, rgba(197, 160, 89, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(197, 160, 89, 0.05) 0px, transparent 50%);
+            color: var(--text-dark);
             font-family: 'Montserrat', sans-serif;
-            letter-spacing: 0.5px;
         }
         
-        /* 炫酷的玻璃拟态卡片 */
+        /* --- 卡片：象牙白玻璃感 --- */
         .card {
-            background: var(--glass-bg) !important;
-            backdrop-filter: blur(12px) !important;
-            -webkit-backdrop-filter: blur(12px) !important;
-            border: 1px solid var(--glass-border) !important;
-            border-radius: 20px !important;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8) !important;
-            transition: transform 0.3s ease, border-color 0.3s ease;
+            background: var(--card-bg) !important;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 10px 30px rgba(197, 160, 89, 0.08) !important;
+            margin-bottom: 25px;
         }
         
-        .card:hover {
-            border-color: rgba(197, 160, 89, 0.4) !important;
-            transform: translateY(-5px);
-        }
-        
-        /* 标题样式升级 */
+        /* --- 标题：香槟金质感 --- */
         h1 {
             font-family: 'Cinzel', serif;
-            background: var(--accent-gold);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 10px 20px rgba(0,0,0,0.3);
-            font-size: 2.5rem !important;
-            letter-spacing: 4px !important;
+            color: var(--accent-gold) !important;
+            letter-spacing: 5px !important;
+            text-align: center;
+            font-size: 2.2rem !important;
+            background: none !important;
+            -webkit-text-fill-color: initial !important;
         }
         
         .section-label {
-            color: #c5a059 !important;
-            border-bottom: 1px solid rgba(197, 160, 89, 0.2) !important;
-            font-weight: 600 !important;
+            color: var(--accent-gold) !important;
+            border-bottom: 1px solid var(--border-color) !important;
+            letter-spacing: 2px;
+            font-size: 12px !important;
         }
         
-        /* 按钮变为霓虹质感 */
+        /* --- 按钮：高级金与质感白 --- */
         .btn-main {
             background: var(--accent-gold) !important;
-            color: #000 !important;
+            color: #FFF !important;
+            border-radius: 30px !important;
+            padding: 14px !important;
+            font-weight: 600 !important;
+            letter-spacing: 1px;
+            box-shadow: 0 5px 15px rgba(197, 160, 89, 0.2) !important;
             border: none !important;
-            text-transform: uppercase;
-            font-weight: 800 !important;
-            letter-spacing: 2px;
-            box-shadow: 0 4px 15px rgba(197, 160, 89, 0.4);
-            transition: all 0.3s !important;
-            position: relative;
-            overflow: hidden;
         }
         
         .btn-main:hover {
-            box-shadow: 0 6px 25px rgba(197, 160, 89, 0.6) !important;
-            transform: scale(1.02);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(197, 160, 89, 0.3) !important;
         }
         
         .btn-sub {
-            background: transparent !important;
-            border: 1px solid #c5a059 !important;
-            color: #c5a059 !important;
+            background: #FFF !important;
+            border: 1px solid var(--border-color) !important;
+            color: var(--accent-gold) !important;
+            border-radius: 30px !important;
+        }
+        
+        /* --- 修复你提到的白色补丁块 --- */
+        #weight-config-area, #staging-area, #my-rooms-container {
+            background: rgba(255, 255, 255, 0.5) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 12px !important;
+        }
+        
+        #weight-inputs input {
+            background: #FFF !important;
+            border: 1px solid #EEE !important;
+            color: var(--text-dark) !important;
+            border-radius: 6px;
+        }
+        
+        /* --- 列表行：清爽优雅 --- */
+        .song-row {
+            background: #FFF !important;
+            border-bottom: 1px solid #F5F5F5 !important;
+            margin-bottom: 2px;
             transition: all 0.3s;
         }
         
-        .btn-sub:hover {
-            background: rgba(197, 160, 89, 0.1) !important;
-        }
-        
-        /* 歌曲行升级 */
-        .song-row, .song-row-collab {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-            padding: 15px 10px !important;
-            transition: background 0.2s;
-        }
-        
         .song-row:hover {
-            background: rgba(255, 255, 255, 0.03);
+            background: #FFFCF5 !important; /* 鼠标划过淡淡的暖色 */
+            transform: translateX(5px);
         }
         
-        /* 输入框升级 */
+        .row-idx {
+            color: #DDD !important;
+            font-family: 'Montserrat', sans-serif;
+        }
+        
+        .song-name {
+            color: var(--text-dark) !important;
+            font-weight: 600 !important;
+        }
+        
+        .song-ar-sub {
+            color: #999 !important;
+        }
+        
+        /* --- 播放按钮：精致的小圆点 --- */
+        .play-btn {
+            background: #F9F9F9 !important;
+            border: 1px solid #EEE !important;
+            color: var(--accent-gold) !important;
+        }
+        
+        /* 下拉框与输入框 */
         input, select {
-            color: #fff !important;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+            background: transparent !important;
+            border-bottom: 1px solid #EEE !important;
+            color: var(--text-dark) !important;
         }
         
         input::placeholder {
-            color: rgba(255, 255, 255, 0.3);
+            color: #CCC;
         }
         
-        /* 播放按钮呼吸灯效果 */
-        .play-btn {
-            background: var(--accent-gold) !important;
-            box-shadow: 0 0 10px rgba(197, 160, 89, 0.3);
-            color: #000 !important;
-            padding-left: 3px !important; /* 修正居中 */
-        }
-        
-        /* 协作大厅高亮 */
-        #collab-card {
-            border: 1px solid rgba(0, 210, 255, 0.3) !important;
-            background: linear-gradient(to bottom right, rgba(0, 210, 255, 0.05), rgba(0, 0, 0, 0)) !important;
-        }
-        
-        /* 自定义滚动条 - 让它看起来像高科技设备 */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0a0e14; }
-        ::-webkit-scrollbar-thumb {
-            background: var(--accent-gold);
-            border-radius: 10px;
-        }
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: #E0D5C0; border-radius: 10px; }
     </style>
 </head>
 <body>
+<div id="bg-glow" style="position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1; background: radial-gradient(circle at 50% 50%, rgba(197, 160, 89, 0.05) 0%, transparent 50%); pointer-events:none;"></div>
 <audio id="global-player" style="display:none;" controls></audio>
 <div class="container">
     <header style="text-align:center; margin-bottom:20px;">
